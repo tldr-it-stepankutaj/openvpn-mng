@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - GIN_MODE=release
+    volumes:
+      - ./config.yaml.sample:/app/config.yaml.sample
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: openvpn
+      POSTGRES_PASSWORD: openvpn_password
+      POSTGRES_DB: openvpn_mng
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Optional MySQL service (use one or the other)
+  # mysql:
+  #   image: mysql:8.0
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root_password
+  #     MYSQL_USER: openvpn
+  #     MYSQL_PASSWORD: openvpn_password
+  #     MYSQL_DATABASE: openvpn_mng
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   restart: unless-stopped
+
+volumes:
+  postgres_data:
+  # mysql_data:

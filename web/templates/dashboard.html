@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="bi bi-shield-lock me-2"></i>OpenVPN Manager
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/dashboard">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/users">
+                            <i class="bi bi-people me-1"></i>Users
+                        </a>
+                    </li>
+                    {{if or (eq .role "ADMIN") (eq .role "MANAGER")}}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/groups">
+                            <i class="bi bi-diagram-3 me-1"></i>Groups
+                        </a>
+                    </li>
+                    {{end}}
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i>{{.user.Username}}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i>Profile</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="logout()"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">Dashboard</h1>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Welcome</h5>
+                                <h2>{{.user.FirstName}} {{.user.LastName}}</h2>
+                            </div>
+                            <div class="fs-1">
+                                <i class="bi bi-person-circle"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Role</h5>
+                                <h2>{{.role}}</h2>
+                            </div>
+                            <div class="fs-1">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h5 class="card-title">Email</h5>
+                                <h6>{{.user.Email}}</h6>
+                            </div>
+                            <div class="fs-1">
+                                <i class="bi bi-envelope"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-lightning me-2"></i>Quick Actions
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            <a href="/profile" class="list-group-item list-group-item-action">
+                                <i class="bi bi-person me-2"></i>Edit Profile
+                            </a>
+                            <a href="/users" class="list-group-item list-group-item-action">
+                                <i class="bi bi-people me-2"></i>View Users
+                            </a>
+                            {{if eq .role "ADMIN"}}
+                            <a href="/groups" class="list-group-item list-group-item-action">
+                                <i class="bi bi-diagram-3 me-2"></i>Manage Groups
+                            </a>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-info-circle me-2"></i>System Info
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-borderless mb-0">
+                            <tr>
+                                <th>Application:</th>
+                                <td>OpenVPN Manager</td>
+                            </tr>
+                            <tr>
+                                <th>Version:</th>
+                                <td>1.0.0</td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td><span class="badge bg-success">Online</span></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

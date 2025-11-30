@@ -1,0 +1,21 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+
+database:
+  type: "postgres"  # postgres or mysql
+  host: "localhost"
+  port: 5432
+  username: "dbuser"
+  password: "dbpassword"
+  database: "dbname"
+  sslmode: "disable"
+
+api:
+  enabled: true
+  prefix: "/api/v1"
+
+auth:
+  jwt_secret: "your-super-secret-jwt-key-change-in-production"
+  token_expiry: 24      # hours
+  session_expiry: 8     # hours

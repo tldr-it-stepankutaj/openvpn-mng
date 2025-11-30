@@ -1,0 +1,26 @@
+server:
+  host: "127.0.0.1"
+  port: 8080
+
+database:
+  type: "postgres"  # postgres or mysql
+  host: "localhost"
+  port: 5432
+  username: "your_username"
+  password: "your_password"
+  database: "openvpn_mng"
+  sslmode: "disable"
+
+api:
+  enabled: true
+  swagger_enabled: true
+  swagger_allowed_ips:
+    - "127.0.0.1/32"
+    - "::1/128"
+    # - "192.168.1.0/24"  # Allow entire subnet
+    # - "0.0.0.0/0"       # Allow all (not recommended for production)
+
+auth:
+  jwt_secret: "your-super-secret-jwt-key-change-in-production"
+  token_expiry: 24      # hours
+  session_expiry: 8     # hours

@@ -45,7 +45,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 
 	// API routes (if enabled)
 	if cfg.API.Enabled {
-		api := r.Group(cfg.API.Prefix)
+		api := r.Group("/api/v1")
 		{
 			// Auth routes (public)
 			auth := api.Group("/auth")
@@ -88,7 +88,11 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 			}
 		}
 
-		// Swagger documentation
-		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		// Swagger documentation (if enabled)
+		if cfg.API.SwaggerEnabled {
+			swagger := r.Group("/swagger")
+			swagger.Use(middleware.IPFilter(cfg.API.SwaggerAllowedIPs))
+			swagger.GET("/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		}
 	}
 }

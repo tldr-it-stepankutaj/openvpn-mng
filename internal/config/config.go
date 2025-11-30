@@ -34,8 +34,9 @@ type DatabaseConfig struct {
 
 // APIConfig represents REST API configuration
 type APIConfig struct {
-	Enabled bool   `yaml:"enabled"`
-	Prefix  string `yaml:"prefix"`
+	Enabled           bool     `yaml:"enabled"`
+	SwaggerEnabled    bool     `yaml:"swagger_enabled"`
+	SwaggerAllowedIPs []string `yaml:"swagger_allowed_ips"` // CIDR notation: "0.0.0.0/0" for all, "192.168.1.0/24" for subnet
 }
 
 // AuthConfig represents authentication configuration
@@ -63,9 +64,6 @@ func Load(path string) (*Config, error) {
 	}
 	if config.Server.Port == 0 {
 		config.Server.Port = 8080
-	}
-	if config.API.Prefix == "" {
-		config.API.Prefix = "/api/v1"
 	}
 	if config.Auth.TokenExpiry == 0 {
 		config.Auth.TokenExpiry = 24

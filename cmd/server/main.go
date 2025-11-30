@@ -87,7 +87,10 @@ func main() {
 
 	// API status
 	if cfg.API.Enabled {
-		log.Printf("REST API enabled at %s", cfg.API.Prefix)
+		log.Println("REST API enabled at /api/v1")
+		if cfg.API.SwaggerEnabled {
+			log.Println("Swagger UI enabled at /swagger/index.html")
+		}
 	} else {
 		log.Println("REST API disabled")
 	}

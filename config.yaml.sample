@@ -13,7 +13,6 @@ database:
 
 api:
   enabled: true
-  prefix: "/api/v1"
 
 auth:
   jwt_secret: "your-super-secret-jwt-key-change-in-production"

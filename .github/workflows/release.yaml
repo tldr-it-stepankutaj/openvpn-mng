@@ -99,7 +99,7 @@ jobs:
 
       - name: Install RPM package
         run: |
-          dnf install -y dist/openvpn-mng_*_linux_amd64.rpm
+          dnf install -y which dist/openvpn-mng_*_linux_amd64.rpm
 
       - name: Verify installation
         run: |

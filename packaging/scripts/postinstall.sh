@@ -53,7 +53,9 @@ if [ ! -f /etc/openvpn-mng/config.yaml ]; then
     echo "=========================================="
 fi
 
-# Reload systemd
-systemctl daemon-reload
+# Reload systemd (only if systemd is running)
+if command -v systemctl > /dev/null 2>&1 && systemctl --version > /dev/null 2>&1; then
+    systemctl daemon-reload || true
+fi
 
 exit 0

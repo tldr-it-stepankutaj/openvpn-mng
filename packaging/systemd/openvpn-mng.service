@@ -1,0 +1,33 @@
+[Unit]
+Description=OpenVPN Manager - Web-based management system for OpenVPN
+Documentation=https://github.com/tldr-it-stepankutaj/openvpn-mng
+After=network.target postgresql.service mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=openvpn-mng
+Group=openvpn-mng
+ExecStart=/usr/bin/openvpn-mng -config /etc/openvpn-mng/config.yaml
+WorkingDirectory=/var/lib/openvpn-mng
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=openvpn-mng
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/openvpn-mng /var/log/openvpn-mng
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+# Environment file (optional)
+EnvironmentFile=-/etc/openvpn-mng/environment
+
+[Install]
+WantedBy=multi-user.target

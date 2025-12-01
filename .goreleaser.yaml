@@ -1,0 +1,228 @@
+# GoReleaser configuration
+# Documentation: https://goreleaser.com
+
+version: 2
+
+project_name: openvpn-mng
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: openvpn-mng
+    main: ./cmd/server
+    binary: openvpn-mng
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - LICENSE
+      - config.yaml.example
+      - help/*
+      - web/**/*
+      - packaging/systemd/openvpn-mng.service
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Security
+      regexp: '^.*?sec(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Others
+      order: 999
+
+nfpms:
+  - id: packages
+    package_name: openvpn-mng
+    file_name_template: "{{ .PackageName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    vendor: TLDR IT
+    homepage: https://github.com/tldr-it-stepankutaj/openvpn-mng
+    maintainer: Stepan Kutaj <stepan@tldr.cz>
+    description: Web-based management system for OpenVPN users, groups, networks, and access control
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    section: admin
+    priority: optional
+
+    dependencies:
+      - systemd
+
+    contents:
+      # Binary is automatically included by nfpm
+
+      # Systemd service
+      - src: packaging/systemd/openvpn-mng.service
+        dst: /usr/lib/systemd/system/openvpn-mng.service
+        type: config
+
+      # Example config
+      - src: config.yaml.example
+        dst: /usr/share/openvpn-mng/config.yaml.example
+        type: config
+
+      # Web assets
+      - src: web/
+        dst: /usr/share/openvpn-mng/web/
+
+      # Documentation
+      - src: help/
+        dst: /usr/share/doc/openvpn-mng/help/
+
+      - src: README.md
+        dst: /usr/share/doc/openvpn-mng/README.md
+
+      - src: LICENSE
+        dst: /usr/share/doc/openvpn-mng/LICENSE
+
+      # Create empty directories
+      - dst: /etc/openvpn-mng
+        type: dir
+        file_info:
+          mode: 0750
+          owner: root
+          group: openvpn-mng
+
+      - dst: /var/lib/openvpn-mng
+        type: dir
+        file_info:
+          mode: 0750
+          owner: openvpn-mng
+          group: openvpn-mng
+
+      - dst: /var/log/openvpn-mng
+        type: dir
+        file_info:
+          mode: 0750
+          owner: openvpn-mng
+          group: openvpn-mng
+
+    scripts:
+      postinstall: packaging/scripts/postinstall.sh
+      preremove: packaging/scripts/preremove.sh
+      postremove: packaging/scripts/postremove.sh
+
+    overrides:
+      deb:
+        dependencies:
+          - systemd
+        recommends:
+          - postgresql
+      rpm:
+        dependencies:
+          - systemd
+        recommends:
+          - postgresql-server
+
+dockers_v2:
+  - id: multi-arch
+    ids:
+      - openvpn-mng
+    dockerfile: Dockerfile
+    images:
+      - "tldr/openvpn-mng"
+    tags:
+      - "{{ .Version }}"
+      - "latest"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.description: "Web-based management system for OpenVPN"
+      org.opencontainers.image.url: "https://github.com/tldr-it-stepankutaj/openvpn-mng"
+      org.opencontainers.image.source: "https://github.com/tldr-it-stepankutaj/openvpn-mng"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.licenses: "MIT"
+    extra_files:
+      - web
+      - config.yaml.example
+
+release:
+  github:
+    owner: tldr-it-stepankutaj
+    name: openvpn-mng
+
+  draft: false
+  prerelease: auto
+
+  name_template: "v{{ .Version }}"
+
+  header: |
+    ## OpenVPN Manager v{{ .Version }}
+
+    ### Installation
+
+    **Quick install (Linux amd64):**
+    ```bash
+    # DEB (Debian, Ubuntu)
+    wget https://github.com/tldr-it-stepankutaj/openvpn-mng/releases/download/v{{ .Version }}/openvpn-mng_{{ .Version }}_linux_amd64.deb
+    sudo dpkg -i openvpn-mng_{{ .Version }}_linux_amd64.deb
+
+    # RPM (RHEL, AlmaLinux, Rocky Linux)
+    wget https://github.com/tldr-it-stepankutaj/openvpn-mng/releases/download/v{{ .Version }}/openvpn-mng_{{ .Version }}_linux_amd64.rpm
+    sudo rpm -i openvpn-mng_{{ .Version }}_linux_amd64.rpm
+
+    # Docker
+    docker pull tldr/openvpn-mng:{{ .Version }}
+    ```
+
+    See [Installation Guide](https://github.com/tldr-it-stepankutaj/openvpn-mng/blob/main/help/install.md) for detailed instructions.
+
+  footer: |
+    ---
+
+    **Full Changelog**: https://github.com/tldr-it-stepankutaj/openvpn-mng/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    **Docker Hub**: https://hub.docker.com/r/tldr/openvpn-mng

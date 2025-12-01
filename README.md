@@ -2,6 +2,10 @@
 
 A web-based management system for OpenVPN users, groups, networks, and access control. Built with Go, Gin framework, and GORM ORM.
 
+[![Release](https://img.shields.io/github/v/release/tldr-it-stepankutaj/openvpn-mng)](https://github.com/tldr-it-stepankutaj/openvpn-mng/releases)
+[![License](https://img.shields.io/github/license/tldr-it-stepankutaj/openvpn-mng)](LICENSE)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/tldr-it-stepankutaj/openvpn-mng)](go.mod)
+
 ## Features
 
 - **User Management**: Create, update, delete users with role-based access control
@@ -16,156 +20,111 @@ A web-based management system for OpenVPN users, groups, networks, and access co
   - `ADMIN` - Full access to all resources including networks, VPN sessions, and audit logs
 - **Manager Hierarchy**: Users can be assigned to a manager for hierarchical access control
 - **Audit Logging**: Track all operations (create, read, update, delete, login, logout)
-- **REST API**: Full-featured API with Swagger documentation (see [API Documentation](help/api.md))
+- **REST API**: Full-featured API with Swagger documentation
+- **VPN Auth API**: Dedicated API endpoints for OpenVPN server integration
 - **Web Interface**: Bootstrap-based HTML interface for user-friendly management
 - **Database Support**: PostgreSQL and MySQL support via GORM
 - **JWT Authentication**: Secure token-based authentication
-- **VPN Auth API**: Dedicated API endpoints for OpenVPN server integration with token-based authentication
 - **IP Filtering**: Restrict Swagger documentation access by IP/CIDR ranges
 - **Flexible Logging**: Configurable output (stdout/file), format (text/JSON), and log levels
 
-## Requirements
+## Quick Install
 
-- Go 1.21 or higher
-- PostgreSQL 12+ or MySQL 8+
-- swag CLI tool (for Swagger documentation generation)
+### DEB (Debian, Ubuntu)
+
+```bash
+VERSION="1.0.0"
+wget https://github.com/tldr-it-stepankutaj/openvpn-mng/releases/download/v${VERSION}/openvpn-mng_${VERSION}_linux_amd64.deb
+sudo dpkg -i openvpn-mng_${VERSION}_linux_amd64.deb
+```
+
+### RPM (RHEL, AlmaLinux, Rocky Linux)
+
+```bash
+VERSION="1.0.0"
+wget https://github.com/tldr-it-stepankutaj/openvpn-mng/releases/download/v${VERSION}/openvpn-mng_${VERSION}_linux_amd64.rpm
+sudo dnf install ./openvpn-mng_${VERSION}_linux_amd64.rpm
+```
+
+### Docker
+
+```bash
+docker pull tldr/openvpn-mng:latest
+```
+
+For detailed installation instructions, see **[Installation Guide](help/install.md)**.
 
 ## Quick Start
 
-### 1. Clone and install
+After installation:
 
-```bash
-git clone https://github.com/tldr-it-stepankutaj/openvpn-mng.git
-cd openvpn-mng
-go mod download
-```
+1. **Generate secrets:**
+   ```bash
+   openssl rand -hex 32  # for jwt_secret
+   openssl rand -hex 32  # for vpn_token (optional)
+   ```
 
-### 2. Install swag CLI
+2. **Configure:**
+   ```bash
+   sudo nano /etc/openvpn-mng/config.yaml
+   ```
 
-```bash
-go install github.com/swaggo/swag/cmd/swag@latest
-```
+3. **Start service:**
+   ```bash
+   sudo systemctl enable --now openvpn-mng.service
+   ```
 
-Make sure `$GOPATH/bin` (usually `~/go/bin`) is in your `PATH`.
-
-### 3. Generate Swagger documentation
-
-```bash
-swag init -g cmd/server/main.go -o docs
-```
-
-### 4. Setup database
-
-**PostgreSQL:**
-```sql
-CREATE DATABASE openvpn_mng;
-```
-
-**MySQL:**
-```sql
-CREATE DATABASE openvpn_mng CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-### 5. Generate secrets
-
-```bash
-# Generate JWT secret (required)
-openssl rand -hex 32
-
-# Generate VPN token (optional, for OpenVPN integration)
-openssl rand -hex 32
-```
-
-### 6. Configure and run
-
-```bash
-cp config.yaml.example config.yaml
-# Edit config.yaml with your settings (add generated secrets)
-./openvpn-mng
-```
-
-### Default admin credentials
-
-- **Username:** `admin`
-- **Password:** `admin123`
+4. **Access web interface:**
+   - URL: `http://localhost:8080`
+   - Default credentials: `admin` / `admin123`
 
 **Important:** Change the default password immediately after first login!
 
 ## Configuration
 
-The application is configured via `config.yaml`:
+The application is configured via `/etc/openvpn-mng/config.yaml` (package install) or `config.yaml` (manual/Docker).
 
 ```yaml
 server:
-  host: "127.0.0.1"
+  host: "0.0.0.0"
   port: 8080
 
 database:
-  type: "postgres"       # "postgres" or "mysql"
+  type: "postgres"
   host: "localhost"
   port: 5432
-  username: "your_user"
-  password: "your_password"
+  username: "openvpn"
+  password: "your-secure-password"
   database: "openvpn_mng"
-  sslmode: "disable"
 
 api:
   enabled: true
   swagger_enabled: true
-  swagger_allowed_ips:
-    - "127.0.0.1/32"
-    - "::1/128"
-  # VPN token for OpenVPN server integration
-  # Generate with: openssl rand -hex 32
-  vpn_token: ""          # Leave empty to disable VPN Auth API
+  vpn_token: ""  # Generate with: openssl rand -hex 32
 
 auth:
-  # Generate with: openssl rand -hex 32
-  jwt_secret: "your-super-secret-jwt-key-change-in-production"
-  token_expiry: 24       # hours
-  session_expiry: 8      # hours
+  jwt_secret: ""  # Generate with: openssl rand -hex 32
+  token_expiry: 24
+  session_expiry: 8
 
 logging:
-  output: "stdout"       # "stdout", "file", or "both"
-  path: ""
-  format: "text"         # "text" or "json"
-  level: "info"          # "debug", "info", "warn", "error"
+  output: "stdout"
+  format: "text"
+  level: "info"
 ```
 
-### Generating Secrets
+### Environment Variables
 
-Always use cryptographically secure random strings for secrets:
+Configuration can also be set via environment variables:
 
-```bash
-# Generate JWT secret (64 characters hex = 256 bits)
-openssl rand -hex 32
+| Variable | Description |
+|----------|-------------|
+| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE` | Database connection |
+| `AUTH_JWT_SECRET` | JWT signing secret |
+| `API_VPN_TOKEN` | VPN Auth API token |
+| `LOG_OUTPUT`, `LOG_FORMAT`, `LOG_LEVEL` | Logging configuration |
 
-# Example output: a1b2c3d4e5f6...
-```
-
-### Logging Options
-
-| Option | Values | Description |
-|--------|--------|-------------|
-| `output` | stdout, file, both | Where to send logs |
-| `format` | text, json | Log format (JSON recommended for aggregators) |
-| `level` | debug, info, warn, error | Minimum log level |
-
-## Building
-
-```bash
-# Development
-go build -o openvpn-mng ./cmd/server
-
-# Production (Linux)
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o openvpn-mng ./cmd/server
-
-# Windows
-GOOS=windows GOARCH=amd64 go build -o openvpn-mng.exe ./cmd/server
-
-# macOS (Apple Silicon)
-GOOS=darwin GOARCH=arm64 go build -o openvpn-mng ./cmd/server
-```
+See **[Installation Guide](help/install.md)** for complete environment variable list.
 
 ## Web Interface
 
@@ -180,51 +139,9 @@ GOOS=darwin GOARCH=arm64 go build -o openvpn-mng ./cmd/server
 | `/sessions` | VPN session history (Admin only) |
 | `/profile` | User profile |
 
-## Testing
+## VPN Auth API
 
-Run the test suite:
-
-```bash
-# Run all tests
-make test
-
-# Run with race detection
-make test-race
-
-# Run specific test categories
-make test-services      # Service layer tests
-make test-handlers      # HTTP handler tests
-make test-middleware    # Middleware tests
-make test-integration   # Integration tests
-
-# Generate coverage report
-make test-coverage-html
-```
-
-For detailed testing documentation, see **[Testing Guide](help/test.md)**.
-
-## VPN Auth API (OpenVPN Integration)
-
-The VPN Auth API provides dedicated endpoints for OpenVPN server integration using token-based authentication instead of a service account.
-
-### Enable VPN Auth API
-
-1. Generate a VPN token:
-   ```bash
-   openssl rand -hex 32
-   ```
-
-2. Add to `config.yaml`:
-   ```yaml
-   api:
-     vpn_token: "your-generated-token"
-   ```
-
-3. Restart the application
-
-### VPN Auth Endpoints
-
-All endpoints require the `X-VPN-Token` header.
+The VPN Auth API provides dedicated endpoints for OpenVPN server integration using token-based authentication.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -236,66 +153,56 @@ All endpoints require the `X-VPN-Token` header.
 | `/api/v1/vpn-auth/sessions` | POST | Create VPN session |
 | `/api/v1/vpn-auth/sessions/{id}/disconnect` | PUT | End VPN session |
 
-### Example Usage
-
-```bash
-# Authenticate user
-curl -X POST http://localhost:8080/api/v1/vpn-auth/authenticate \
-  -H "X-VPN-Token: your-token" \
-  -H "Content-Type: application/json" \
-  -d '{"username": "user", "password": "pass"}'
-
-# Get user routes
-curl http://localhost:8080/api/v1/vpn-auth/users/by-username/testuser \
-  -H "X-VPN-Token: your-token"
-```
-
-For complete OpenVPN integration guide, see **[Client Integration Guide](help/client.md)**.
+All endpoints require the `X-VPN-Token` header. See **[Client Integration Guide](help/client.md)** for complete documentation.
 
 ## Documentation
 
-- **[API Documentation](help/api.md)** - Complete REST API reference with examples
+- **[Installation Guide](help/install.md)** - Complete installation instructions (DEB, RPM, Docker, Source)
+- **[API Documentation](help/api.md)** - REST API reference with examples
 - **[Client Integration Guide](help/client.md)** - OpenVPN server integration guide
 - **[Testing Guide](help/test.md)** - Test suite structure and usage
-- **Swagger UI** - Interactive API docs at `http://localhost:8080/swagger/index.html`
+- **Swagger UI** - Interactive API docs at `/swagger/index.html`
 
-## Project Structure
+## Development
 
+### Prerequisites
+
+- Go 1.22+
+- PostgreSQL 12+ or MySQL 8+
+- swag CLI (`go install github.com/swaggo/swag/cmd/swag@latest`)
+
+### Build from Source
+
+```bash
+git clone https://github.com/tldr-it-stepankutaj/openvpn-mng.git
+cd openvpn-mng
+make tools    # Install development tools
+make deps     # Download dependencies
+make swagger  # Generate Swagger docs
+make build    # Build binary
 ```
-openvpn-mng/
-├── cmd/server/           # Application entry point
-├── internal/
-│   ├── config/           # Configuration loading
-│   ├── database/         # Database initialization
-│   ├── dto/              # Data transfer objects
-│   ├── handlers/         # HTTP handlers
-│   ├── logger/           # Logging utilities
-│   ├── middleware/       # Auth, audit, IP filtering
-│   ├── models/           # Database models
-│   ├── routes/           # Route definitions
-│   └── services/         # Business logic
-├── test/
-│   ├── testutil/         # Test utilities and helpers
-│   ├── services/         # Service layer tests
-│   ├── handlers/         # HTTP handler tests
-│   ├── middleware/       # Middleware tests
-│   ├── dto/              # DTO tests
-│   └── integration/      # Integration tests
-├── web/
-│   ├── static/           # CSS, JS assets
-│   └── templates/        # HTML templates
-├── docs/                 # Swagger generated docs
-├── help/                 # Documentation
-│   ├── api.md            # API documentation
-│   └── test.md           # Testing guide
-└── config.yaml           # Configuration file
+
+### Testing
+
+```bash
+make test              # Run all tests
+make test-race         # Run with race detection
+make test-coverage-html # Generate coverage report
 ```
+
+### Local Package Build
+
+```bash
+make release-snapshot  # Build packages locally (requires goreleaser)
+```
+
+See `make help` for all available targets.
 
 ## Database Schema
 
 ### Core Tables
 
-- **users** - User accounts with VPN settings (is_active, valid_from, valid_to, vpn_ip)
+- **users** - User accounts with VPN settings
 - **groups** - User groups (IT, HR, Finance, etc.)
 - **networks** - Network definitions (CIDR ranges)
 - **vpn_sessions** - VPN connection history
@@ -310,98 +217,28 @@ openvpn-mng/
 ## Security Considerations
 
 1. **Change default credentials** - Always change the default admin password
-2. **Use strong secrets** - Generate secure random strings:
-   ```bash
-   # For jwt_secret and vpn_token
-   openssl rand -hex 32
-   ```
+2. **Use strong secrets** - Generate with `openssl rand -hex 32`
 3. **Enable SSL/TLS** - Use a reverse proxy with HTTPS in production
 4. **Database security** - Use strong passwords and restrict database access
 5. **IP filtering** - Restrict Swagger access to trusted IPs in production
 6. **Audit logging** - Monitor audit logs for suspicious activity
 7. **User validity** - Use `valid_from`/`valid_to` for temporary access
-8. **VPN API authentication** - Use VPN token instead of service account for OpenVPN integration
+8. **VPN API authentication** - Use VPN token instead of service account
 
-## Docker
+## Contributing
 
-### Quick Start with Docker Compose
-
-```bash
-# Start with PostgreSQL
-docker-compose up -d
-
-# View logs
-docker-compose logs -f app
-
-# Stop
-docker-compose down
-```
-
-The application will be available at `http://localhost:8080`.
-
-### Environment Variables
-
-The application supports configuration via environment variables (useful for Docker/Kubernetes):
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SERVER_HOST` | Server bind address | `0.0.0.0` |
-| `SERVER_PORT` | Server port | `8080` |
-| `DB_TYPE` | Database type (`postgres` or `mysql`) | `postgres` |
-| `DB_HOST` | Database host | - |
-| `DB_PORT` | Database port | `5432` (postgres) / `3306` (mysql) |
-| `DB_USERNAME` | Database username | - |
-| `DB_PASSWORD` | Database password | - |
-| `DB_DATABASE` | Database name | - |
-| `DB_SSLMODE` | PostgreSQL SSL mode | `disable` |
-| `AUTH_JWT_SECRET` | JWT signing secret (generate with `openssl rand -hex 32`) | - |
-| `AUTH_TOKEN_EXPIRY` | Token expiry in hours | `24` |
-| `AUTH_SESSION_EXPIRY` | Session expiry in hours | `8` |
-| `API_ENABLED` | Enable REST API | `true` |
-| `API_SWAGGER_ENABLED` | Enable Swagger UI | `true` |
-| `API_SWAGGER_ALLOWED_IPS` | Comma-separated CIDR list | - |
-| `API_VPN_TOKEN` | VPN Auth API token (generate with `openssl rand -hex 32`) | - |
-| `LOG_OUTPUT` | Log output (`stdout`, `file`, `both`) | `stdout` |
-| `LOG_FORMAT` | Log format (`text`, `json`) | `text` |
-| `LOG_LEVEL` | Log level (`debug`, `info`, `warn`, `error`) | `info` |
-
-Environment variables override values from `config.yaml`.
-
-### Building Docker Image
-
-```bash
-# Build image
-docker build -t openvpn-mng:latest .
-
-# Generate secrets first
-JWT_SECRET=$(openssl rand -hex 32)
-VPN_TOKEN=$(openssl rand -hex 32)
-
-# Run standalone (requires external database)
-docker run -p 8080:8080 \
-  -e DB_HOST=your-db-host \
-  -e DB_USERNAME=your-user \
-  -e DB_PASSWORD=your-password \
-  -e DB_DATABASE=openvpn_mng \
-  -e AUTH_JWT_SECRET=$JWT_SECRET \
-  -e API_VPN_TOKEN=$VPN_TOKEN \
-  openvpn-mng:latest
-```
-
-### Kubernetes
-
-For Kubernetes deployments, use JSON logging format:
-
-```yaml
-env:
-  - name: LOG_OUTPUT
-    value: "stdout"
-  - name: LOG_FORMAT
-    value: "json"
-  - name: LOG_LEVEL
-    value: "info"
-```
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Links
+
+- **GitHub**: https://github.com/tldr-it-stepankutaj/openvpn-mng
+- **Docker Hub**: https://hub.docker.com/r/tldr/openvpn-mng
+- **Releases**: https://github.com/tldr-it-stepankutaj/openvpn-mng/releases

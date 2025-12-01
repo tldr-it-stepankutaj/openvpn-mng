@@ -36,5 +36,6 @@ config.yaml
 
 *.log
 
+dist/
 
 #client.md

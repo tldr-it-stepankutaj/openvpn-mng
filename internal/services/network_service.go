@@ -95,7 +95,7 @@ func (s *NetworkService) Create(req *dto.CreateNetworkRequest, createdBy uuid.UU
 // GetByID gets a network by ID
 func (s *NetworkService) GetByID(id uuid.UUID) (*models.Network, error) {
 	var network models.Network
-	if err := database.GetDB().Preload("Groups").Preload("Creator").Preload("Updater").First(&network, "id = ?", id).Error; err != nil {
+	if err := database.GetDB().Preload("Creator").Preload("Updater").First(&network, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrNetworkNotFound
 		}
@@ -149,7 +149,7 @@ func (s *NetworkService) List(page, pageSize int) ([]models.Network, int64, erro
 	var networks []models.Network
 	var total int64
 
-	query := database.GetDB().Model(&models.Network{}).Preload("Groups")
+	query := database.GetDB().Model(&models.Network{})
 
 	// Count total
 	query.Count(&total)

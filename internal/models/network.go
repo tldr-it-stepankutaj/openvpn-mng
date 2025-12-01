@@ -20,7 +20,7 @@ type Network struct {
 	UpdatedBy   *uuid.UUID     `gorm:"type:uuid" json:"updated_by"`
 	Creator     *User          `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"creator,omitempty"`
 	Updater     *User          `gorm:"foreignKey:UpdatedBy;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"updater,omitempty"`
-	Groups      []Group        `gorm:"many2many:network_groups;" json:"groups,omitempty"`
+	// Groups relationship is managed via NetworkGroup model explicitly
 }
 
 // BeforeCreate hook to set UUID
@@ -37,7 +37,12 @@ type NetworkGroup struct {
 	GroupID   uuid.UUID `gorm:"type:uuid;primaryKey" json:"group_id"`
 	Network   *Network  `gorm:"foreignKey:NetworkID" json:"network,omitempty"`
 	Group     *Group    `gorm:"foreignKey:GroupID" json:"group,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 	CreatedBy uuid.UUID `gorm:"type:uuid;not null" json:"created_by"`
 	Creator   *User     `gorm:"foreignKey:CreatedBy" json:"creator,omitempty"`
+}
+
+// TableName returns the table name for the NetworkGroup model
+func (NetworkGroup) TableName() string {
+	return "network_groups"
 }

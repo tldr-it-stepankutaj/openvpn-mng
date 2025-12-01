@@ -55,7 +55,7 @@ type AddGroupToNetworkRequest struct {
 
 // ToNetworkResponse converts a Network model to NetworkResponse
 func ToNetworkResponse(network *models.Network) NetworkResponse {
-	response := NetworkResponse{
+	return NetworkResponse{
 		ID:          network.ID,
 		Name:        network.Name,
 		CIDR:        network.CIDR,
@@ -65,14 +65,17 @@ func ToNetworkResponse(network *models.Network) NetworkResponse {
 		CreatedBy:   network.CreatedBy,
 		UpdatedBy:   network.UpdatedBy,
 	}
+}
 
-	if len(network.Groups) > 0 {
-		response.Groups = make([]GroupResponse, len(network.Groups))
-		for i, g := range network.Groups {
+// ToNetworkResponseWithGroups converts a Network model to NetworkResponse with groups
+func ToNetworkResponseWithGroups(network *models.Network, groups []models.Group) NetworkResponse {
+	response := ToNetworkResponse(network)
+	if len(groups) > 0 {
+		response.Groups = make([]GroupResponse, len(groups))
+		for i, g := range groups {
 			response.Groups[i] = *ToGroupResponse(&g)
 		}
 	}
-
 	return response
 }
 

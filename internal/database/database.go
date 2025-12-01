@@ -45,7 +45,7 @@ func Initialize(dbCfg *config.DatabaseConfig, logCfg *config.LoggingConfig) erro
 func Migrate() error {
 	applogger.Info("Database migrations started")
 
-	// Define tables to migrate
+	// Define tables to migrate (order matters for foreign keys)
 	tables := []struct {
 		name  string
 		model interface{}

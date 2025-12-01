@@ -3,7 +3,7 @@
 A web-based management system for OpenVPN users, groups, networks, and access control. Built with Go, Gin framework, and GORM ORM.
 
 [![Release](https://img.shields.io/github/v/release/tldr-it-stepankutaj/openvpn-mng)](https://github.com/tldr-it-stepankutaj/openvpn-mng/releases)
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/tldr-it-stepankutaj/openvpn-mng)](go.mod)
 
 ## Features

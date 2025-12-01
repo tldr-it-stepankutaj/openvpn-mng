@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="bi bi-shield-lock me-2"></i>OpenVPN Manager
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/users">
+                            <i class="bi bi-people me-1"></i>Users
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/groups">
+                            <i class="bi bi-diagram-3 me-1"></i>Groups
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/networks">
+                            <i class="bi bi-hdd-network me-1"></i>Networks
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/audit">
+                            <i class="bi bi-journal-text me-1"></i>Audit
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/sessions">
+                            <i class="bi bi-clock-history me-1"></i>History
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i>Profile
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i>Profile</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="logout()"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="bi bi-journal-text me-2"></i>Audit Logs</h1>
+                    <div class="d-flex gap-2">
+                        <select class="form-select" id="filterAction" style="width: auto;" onchange="applyFilters()">
+                            <option value="">All Actions</option>
+                            <option value="CREATE">CREATE</option>
+                            <option value="UPDATE">UPDATE</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="LOGIN">LOGIN</option>
+                            <option value="LOGOUT">LOGOUT</option>
+                        </select>
+                        <select class="form-select" id="filterEntity" style="width: auto;" onchange="applyFilters()">
+                            <option value="">All Entities</option>
+                            <option value="user">User</option>
+                            <option value="group">Group</option>
+                            <option value="network">Network</option>
+                            <option value="vpn_session">VPN Session</option>
+                        </select>
+                        <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                            <i class="bi bi-x-lg"></i> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="auditTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Entity Type</th>
+                                <th>Entity ID</th>
+                                <th>IP Address</th>
+                                <th>Details</th>
+                                <th class="text-end">View</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditTableBody">
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav aria-label="Page navigation" class="mt-3">
+                    <ul class="pagination justify-content-center" id="pagination">
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Audit Detail Modal -->
+    <div class="modal fade" id="viewAuditModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="bi bi-journal-text me-2"></i>Audit Log Detail</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="viewAuditContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script>
+        let currentPage = 1;
+        const pageSize = 20;
+
+        function getActionBadge(action) {
+            const badges = {
+                'CREATE': 'bg-success',
+                'UPDATE': 'bg-warning text-dark',
+                'DELETE': 'bg-danger',
+                'LOGIN': 'bg-info',
+                'LOGOUT': 'bg-secondary',
+                'READ': 'bg-light text-dark'
+            };
+            return badges[action] || 'bg-secondary';
+        }
+
+        async function loadAuditLogs(page = 1) {
+            currentPage = page;
+            const action = document.getElementById('filterAction').value;
+            const entityType = document.getElementById('filterEntity').value;
+
+            let url = `/api/v1/audit?page=${page}&page_size=${pageSize}`;
+            if (action) url += `&action=${action}`;
+            if (entityType) url += `&entity_type=${entityType}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to load audit logs');
+                const data = await response.json();
+                renderAuditLogs(data);
+            } catch (error) {
+                document.getElementById('auditTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-danger py-4">
+                            <i class="bi bi-exclamation-triangle me-2"></i>${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderAuditLogs(data) {
+            const tbody = document.getElementById('auditTableBody');
+
+            if (!data.logs || data.logs.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            No audit logs found
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            tbody.innerHTML = data.logs.map(log => `
+                <tr>
+                    <td><small>${new Date(log.created_at).toLocaleString()}</small></td>
+                    <td>${log.user ? log.user.username : '<span class="text-muted">-</span>'}</td>
+                    <td><span class="badge ${getActionBadge(log.action)}">${log.action}</span></td>
+                    <td>${log.entity_type}</td>
+                    <td>
+                        ${log.entity_id
+                            ? '<code class="small">' + log.entity_id.substring(0, 8) + '...</code>'
+                            : '<span class="text-muted">-</span>'}
+                    </td>
+                    <td><code>${log.ip_address || '-'}</code></td>
+                    <td>
+                        ${log.details
+                            ? '<span class="text-truncate d-inline-block" style="max-width: 150px;">' + log.details + '</span>'
+                            : '<span class="text-muted">-</span>'}
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-info" onclick="viewAudit('${log.id}')" title="View Details">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            renderPagination(data.total, data.page, data.total_pages);
+        }
+
+        function renderPagination(total, currentPage, totalPages) {
+            const pagination = document.getElementById('pagination');
+
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // Previous
+            html += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadAuditLogs(${currentPage - 1}); return false;">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            `;
+
+            // Pages
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            if (startPage > 1) {
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadAuditLogs(1); return false;">1</a></li>`;
+                if (startPage > 2) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `
+                    <li class="page-item ${i === currentPage ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="loadAuditLogs(${i}); return false;">${i}</a>
+                    </li>
+                `;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadAuditLogs(${totalPages}); return false;">${totalPages}</a></li>`;
+            }
+
+            // Next
+            html += `
+                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadAuditLogs(${currentPage + 1}); return false;">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            `;
+
+            pagination.innerHTML = html;
+        }
+
+        async function viewAudit(id) {
+            const modal = new bootstrap.Modal(document.getElementById('viewAuditModal'));
+            modal.show();
+
+            document.getElementById('viewAuditContent').innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/v1/audit/${id}`);
+                if (!response.ok) throw new Error('Failed to load audit log');
+                const log = await response.json();
+                renderAuditDetail(log);
+            } catch (error) {
+                document.getElementById('viewAuditContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function renderAuditDetail(log) {
+            const formatJson = (str) => {
+                if (!str) return '<span class="text-muted">None</span>';
+                try {
+                    const obj = JSON.parse(str);
+                    return '<pre class="bg-light p-2 rounded mb-0" style="max-height: 200px; overflow-y: auto;"><code>' +
+                           JSON.stringify(obj, null, 2) + '</code></pre>';
+                } catch {
+                    return str;
+                }
+            };
+
+            document.getElementById('viewAuditContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Basic Information</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <th width="40%">ID:</th>
+                                <td><code class="small">${log.id}</code></td>
+                            </tr>
+                            <tr>
+                                <th>Date/Time:</th>
+                                <td>${new Date(log.created_at).toLocaleString()}</td>
+                            </tr>
+                            <tr>
+                                <th>User:</th>
+                                <td>${log.user ? log.user.username + ' (' + log.user.first_name + ' ' + log.user.last_name + ')' : '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>Action:</th>
+                                <td><span class="badge ${getActionBadge(log.action)}">${log.action}</span></td>
+                            </tr>
+                            <tr>
+                                <th>Entity Type:</th>
+                                <td>${log.entity_type}</td>
+                            </tr>
+                            <tr>
+                                <th>Entity ID:</th>
+                                <td>${log.entity_id ? '<code>' + log.entity_id + '</code>' : '-'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Connection Information</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <th width="40%">IP Address:</th>
+                                <td><code>${log.ip_address || '-'}</code></td>
+                            </tr>
+                            <tr>
+                                <th>User Agent:</th>
+                                <td><small class="text-muted">${log.user_agent || '-'}</small></td>
+                            </tr>
+                            <tr>
+                                <th>Details:</th>
+                                <td>${log.details || '-'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Old Values</h6>
+                        ${formatJson(log.old_values)}
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">New Values</h6>
+                        ${formatJson(log.new_values)}
+                    </div>
+                </div>
+            `;
+        }
+
+        function applyFilters() {
+            loadAuditLogs(1);
+        }
+
+        function clearFilters() {
+            document.getElementById('filterAction').value = '';
+            document.getElementById('filterEntity').value = '';
+            loadAuditLogs(1);
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAuditLogs();
+        });
+    </script>
+</body>
+</html>

@@ -8,6 +8,21 @@ definitions:
     required:
     - group_id
     type: object
+  dto.AddNetworkToGroupRequest:
+    properties:
+      network_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    required:
+    - network_id
+    type: object
+  dto.AddUserGroupRequest:
+    properties:
+      group_id:
+        type: string
+    required:
+    - group_id
+    type: object
   dto.AddUserToGroupRequest:
     properties:
       user_id:
@@ -120,9 +135,9 @@ definitions:
         minLength: 3
         type: string
       valid_from:
-        type: string
+        $ref: '#/definitions/dto.DateOnly'
       valid_to:
-        type: string
+        $ref: '#/definitions/dto.DateOnly'
       vpn_ip:
         maxLength: 45
         type: string
@@ -164,6 +179,11 @@ definitions:
     required:
     - session_id
     - timestamp
+    type: object
+  dto.DateOnly:
+    properties:
+      time.Time:
+        type: string
     type: object
   dto.ErrorResponse:
     properties:
@@ -225,6 +245,17 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/dto.UserResponse'
+    type: object
+  dto.NetworkBasicInfo:
+    properties:
+      cidr:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
     type: object
   dto.NetworkListResponse:
     properties:
@@ -347,6 +378,9 @@ definitions:
       middle_name:
         maxLength: 100
         type: string
+      password:
+        minLength: 8
+        type: string
       role:
         allOf:
         - $ref: '#/definitions/models.Role'
@@ -357,10 +391,14 @@ definitions:
       telephone:
         maxLength: 50
         type: string
+      username:
+        maxLength: 100
+        minLength: 3
+        type: string
       valid_from:
-        type: string
+        $ref: '#/definitions/dto.DateOnly'
       valid_to:
-        type: string
+        $ref: '#/definitions/dto.DateOnly'
       vpn_ip:
         maxLength: 45
         type: string
@@ -377,6 +415,26 @@ definitions:
         type: string
     required:
     - disconnected_at
+    type: object
+  dto.UserGroupWithNetworks:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      networks:
+        items:
+          $ref: '#/definitions/dto.NetworkBasicInfo'
+        type: array
+    type: object
+  dto.UserGroupsResponse:
+    properties:
+      groups:
+        items:
+          $ref: '#/definitions/dto.UserGroupWithNetworks'
+        type: array
     type: object
   dto.UserListResponse:
     properties:
@@ -1133,6 +1191,123 @@ paths:
       summary: Update group
       tags:
       - groups
+  /api/v1/groups/{id}/networks:
+    get:
+      description: Get networks assigned to a group
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.NetworkResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get group networks
+      tags:
+      - groups
+    post:
+      consumes:
+      - application/json
+      description: Add a network to a group (Admin only)
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Network data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddNetworkToGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add network to group
+      tags:
+      - groups
+  /api/v1/groups/{id}/networks/{network_id}:
+    delete:
+      description: Remove a network from a group (Admin only)
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Network ID
+        in: path
+        name: network_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove network from group
+      tags:
+      - groups
   /api/v1/groups/{id}/users:
     get:
       description: Get users in a group. Admin sees all. Manager sees only subordinates
@@ -1751,6 +1926,125 @@ paths:
       security:
       - BearerAuth: []
       summary: Update user
+      tags:
+      - users
+  /api/v1/users/{id}/groups:
+    get:
+      description: Get all groups a user belongs to with their networks
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.UserGroupsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user groups
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Add a user to a group
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Group ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddUserGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add user to group
+      tags:
+      - users
+  /api/v1/users/{id}/groups/{group_id}:
+    delete:
+      description: Remove a user from a group
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Group ID
+        in: path
+        name: group_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove user from group
       tags:
       - users
   /api/v1/users/password:

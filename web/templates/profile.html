@@ -24,15 +24,32 @@
                             <i class="bi bi-speedometer2 me-1"></i>Dashboard
                         </a>
                     </li>
+                    {{if or (eq .role "ADMIN") (eq .role "MANAGER")}}
                     <li class="nav-item">
                         <a class="nav-link" href="/users">
                             <i class="bi bi-people me-1"></i>Users
                         </a>
                     </li>
-                    {{if or (eq .role "ADMIN") (eq .role "MANAGER")}}
                     <li class="nav-item">
                         <a class="nav-link" href="/groups">
                             <i class="bi bi-diagram-3 me-1"></i>Groups
+                        </a>
+                    </li>
+                    {{end}}
+                    {{if eq .role "ADMIN"}}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/networks">
+                            <i class="bi bi-hdd-network me-1"></i>Networks
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/audit">
+                            <i class="bi bi-journal-text me-1"></i>Audit
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/sessions">
+                            <i class="bi bi-clock-history me-1"></i>History
                         </a>
                     </li>
                     {{end}}
@@ -56,7 +73,7 @@
     <div class="container mt-4">
         <div class="row">
             <div class="col-12">
-                <h1 class="mb-4"><i class="bi bi-person me-2"></i>Profile</h1>
+                <h1 class="mb-4"><i class="bi bi-person me-2"></i>My Profile</h1>
             </div>
         </div>
 
@@ -67,11 +84,52 @@
                         <div class="fs-1 text-primary mb-3">
                             <i class="bi bi-person-circle"></i>
                         </div>
-                        <h4>{{.user.FirstName}} {{.user.LastName}}</h4>
+                        <h4>{{.user.FirstName}} {{if .user.MiddleName}}{{.user.MiddleName}} {{end}}{{.user.LastName}}</h4>
                         <p class="text-muted">@{{.user.Username}}</p>
-                        <span class="badge {{if eq .role "ADMIN"}}bg-danger{{else if eq .role "MANAGER"}}bg-warning{{else}}bg-secondary{{end}}">
-                            {{.role}}
-                        </span>
+                        {{if eq .role "ADMIN"}}
+                        <span class="badge bg-danger">{{.role}}</span>
+                        {{else if eq .role "MANAGER"}}
+                        <span class="badge bg-warning text-dark">{{.role}}</span>
+                        {{else}}
+                        <span class="badge bg-secondary">{{.role}}</span>
+                        {{end}}
+                        {{if .user.IsActive}}
+                        <span class="badge bg-success ms-2">Active</span>
+                        {{else}}
+                        <span class="badge bg-danger ms-2">Inactive</span>
+                        {{end}}
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="bi bi-shield-lock me-2"></i>VPN Information
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">
+                            <strong>VPN IP:</strong>
+                            {{if .user.VpnIP}}
+                            <code>{{.user.VpnIP}}</code>
+                            {{else}}
+                            <span class="text-muted">Dynamic</span>
+                            {{end}}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Valid From:</strong>
+                            {{if .user.ValidFrom}}
+                            {{.user.ValidFrom.Format "2006-01-02"}}
+                            {{else}}
+                            <span class="text-muted">No limit</span>
+                            {{end}}
+                        </p>
+                        <p class="mb-0">
+                            <strong>Valid To:</strong>
+                            {{if .user.ValidTo}}
+                            {{.user.ValidTo.Format "2006-01-02"}}
+                            {{else}}
+                            <span class="text-muted">No limit</span>
+                            {{end}}
+                        </p>
                     </div>
                 </div>
 
@@ -80,11 +138,11 @@
                         <i class="bi bi-info-circle me-2"></i>Account Info
                     </div>
                     <div class="card-body">
-                        <p><strong>Email:</strong> {{.user.Email}}</p>
-                        <p><strong>Phone:</strong> {{if .user.Telephone}}{{.user.Telephone}}{{else}}<span class="text-muted">Not set</span>{{end}}</p>
-                        <p><strong>Created:</strong> {{.user.CreatedAt.Format "2006-01-02"}}</p>
+                        <p class="mb-2"><strong>Email:</strong> {{.user.Email}}</p>
+                        <p class="mb-2"><strong>Phone:</strong> {{if .user.Telephone}}{{.user.Telephone}}{{else}}<span class="text-muted">Not set</span>{{end}}</p>
+                        <p class="mb-2"><strong>Created:</strong> {{.user.CreatedAt.Format "2006-01-02"}}</p>
                         {{if .user.Manager}}
-                        <p><strong>Manager:</strong> {{.user.Manager.FirstName}} {{.user.Manager.LastName}}</p>
+                        <p class="mb-0"><strong>Manager:</strong> {{.user.Manager.FirstName}} {{.user.Manager.LastName}}</p>
                         {{end}}
                     </div>
                 </div>
@@ -99,26 +157,28 @@
                         <div id="profile-alert" class="alert d-none" role="alert"></div>
                         <form id="profileForm">
                             <div class="row">
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label for="firstName" class="form-label">First Name</label>
-                                    <input type="text" class="form-control" id="firstName" value="{{.user.FirstName}}">
+                                    <input type="text" class="form-control" id="firstName" value="{{.user.FirstName}}" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="middleName" class="form-label">Middle Name</label>
+                                    <input type="text" class="form-control" id="middleName" value="{{.user.MiddleName}}">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="lastName" class="form-label">Last Name</label>
+                                    <input type="text" class="form-control" id="lastName" value="{{.user.LastName}}" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" value="{{.user.Email}}" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="lastName" class="form-label">Last Name</label>
-                                    <input type="text" class="form-control" id="lastName" value="{{.user.LastName}}">
+                                    <label for="telephone" class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" id="telephone" value="{{.user.Telephone}}">
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="middleName" class="form-label">Middle Name</label>
-                                <input type="text" class="form-control" id="middleName" value="{{.user.MiddleName}}">
-                            </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="email" value="{{.user.Email}}">
-                            </div>
-                            <div class="mb-3">
-                                <label for="telephone" class="form-label">Phone</label>
-                                <input type="tel" class="form-control" id="telephone" value="{{.user.Telephone}}">
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-check-lg me-1"></i>Save Changes
@@ -134,17 +194,19 @@
                     <div class="card-body">
                         <div id="password-alert" class="alert d-none" role="alert"></div>
                         <form id="passwordForm">
-                            <div class="mb-3">
-                                <label for="currentPassword" class="form-label">Current Password</label>
-                                <input type="password" class="form-control" id="currentPassword" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="newPassword" class="form-label">New Password</label>
-                                <input type="password" class="form-control" id="newPassword" required minlength="8">
-                            </div>
-                            <div class="mb-3">
-                                <label for="confirmPassword" class="form-label">Confirm New Password</label>
-                                <input type="password" class="form-control" id="confirmPassword" required>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="currentPassword" class="form-label">Current Password</label>
+                                    <input type="password" class="form-control" id="currentPassword" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="newPassword" class="form-label">New Password</label>
+                                    <input type="password" class="form-control" id="newPassword" required minlength="8">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="confirmPassword" class="form-label">Confirm Password</label>
+                                    <input type="password" class="form-control" id="confirmPassword" required>
+                                </div>
                             </div>
                             <button type="submit" class="btn btn-warning">
                                 <i class="bi bi-key me-1"></i>Change Password
@@ -162,13 +224,14 @@
         document.getElementById('profileForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const alert = document.getElementById('profile-alert');
+            alert.classList.add('d-none');
 
             const data = {
                 first_name: document.getElementById('firstName').value,
                 last_name: document.getElementById('lastName').value,
-                middle_name: document.getElementById('middleName').value,
+                middle_name: document.getElementById('middleName').value || null,
                 email: document.getElementById('email').value,
-                telephone: document.getElementById('telephone').value
+                telephone: document.getElementById('telephone').value || null
             };
 
             try {
@@ -199,6 +262,7 @@
         document.getElementById('passwordForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const alert = document.getElementById('password-alert');
+            alert.classList.add('d-none');
 
             const newPassword = document.getElementById('newPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;

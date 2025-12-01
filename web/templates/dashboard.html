@@ -7,6 +7,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
+    {{if eq .role "ADMIN"}}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {{end}}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -24,15 +27,32 @@
                             <i class="bi bi-speedometer2 me-1"></i>Dashboard
                         </a>
                     </li>
+                    {{if or (eq .role "ADMIN") (eq .role "MANAGER")}}
                     <li class="nav-item">
                         <a class="nav-link" href="/users">
                             <i class="bi bi-people me-1"></i>Users
                         </a>
                     </li>
-                    {{if or (eq .role "ADMIN") (eq .role "MANAGER")}}
                     <li class="nav-item">
                         <a class="nav-link" href="/groups">
                             <i class="bi bi-diagram-3 me-1"></i>Groups
+                        </a>
+                    </li>
+                    {{end}}
+                    {{if eq .role "ADMIN"}}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/networks">
+                            <i class="bi bi-hdd-network me-1"></i>Networks
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/audit">
+                            <i class="bi bi-journal-text me-1"></i>Audit
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/sessions">
+                            <i class="bi bi-clock-history me-1"></i>History
                         </a>
                     </li>
                     {{end}}
@@ -54,13 +74,182 @@
     </nav>
 
     <div class="container-fluid mt-4">
+        {{if eq .role "ADMIN"}}
+        <!-- ADMIN Dashboard -->
         <div class="row">
             <div class="col-12">
-                <h1 class="mb-4">Dashboard</h1>
+                <h1 class="mb-4"><i class="bi bi-speedometer2 me-2"></i>Admin Dashboard</h1>
             </div>
         </div>
+
+        <!-- Statistics Cards -->
         <div class="row">
-            <div class="col-md-4 mb-4">
+            <div class="col-xl-2 col-md-4 mb-4">
+                <div class="card bg-primary text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-white-50 small">Total Users</div>
+                                <div class="fs-2 fw-bold">{{if .stats}}{{.stats.TotalUsers}}{{else}}0{{end}}</div>
+                            </div>
+                            <i class="bi bi-people fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-2 col-md-4 mb-4">
+                <div class="card bg-success text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-white-50 small">Active Users</div>
+                                <div class="fs-2 fw-bold">{{if .stats}}{{.stats.ActiveUsers}}{{else}}0{{end}}</div>
+                            </div>
+                            <i class="bi bi-person-check fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-2 col-md-4 mb-4">
+                <div class="card bg-info text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-white-50 small">Connected</div>
+                                <div class="fs-2 fw-bold">{{if .stats}}{{.stats.ConnectedUsers}}{{else}}0{{end}}</div>
+                            </div>
+                            <i class="bi bi-wifi fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-2 col-md-4 mb-4">
+                <div class="card bg-warning text-dark h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-dark-50 small">Groups</div>
+                                <div class="fs-2 fw-bold">{{if .stats}}{{.stats.TotalGroups}}{{else}}0{{end}}</div>
+                            </div>
+                            <i class="bi bi-diagram-3 fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-2 col-md-4 mb-4">
+                <div class="card bg-secondary text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-white-50 small">Networks</div>
+                                <div class="fs-2 fw-bold">{{if .stats}}{{.stats.TotalNetworks}}{{else}}0{{end}}</div>
+                            </div>
+                            <i class="bi bi-hdd-network fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-2 col-md-4 mb-4">
+                <div class="card bg-dark text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-white-50 small">Sessions</div>
+                                <div class="fs-2 fw-bold">{{if .stats}}{{.stats.TotalSessions}}{{else}}0{{end}}</div>
+                            </div>
+                            <i class="bi bi-clock-history fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-download me-2"></i>Received Bytes (Last 30 Days)
+                    </div>
+                    <div class="card-body">
+                        <canvas id="receivedChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-upload me-2"></i>Sent Bytes (Last 30 Days)
+                    </div>
+                    <div class="card-body">
+                        <canvas id="sentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Audit Logs -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-journal-text me-2"></i>Recent Audit Logs</span>
+                        <a href="/audit" class="btn btn-sm btn-outline-primary">View All</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>User</th>
+                                        <th>Action</th>
+                                        <th>Entity</th>
+                                        <th>IP Address</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {{if .stats}}
+                                    {{range .stats.RecentAuditLogs}}
+                                    <tr>
+                                        <td>{{.CreatedAt.Format "2006-01-02 15:04:05"}}</td>
+                                        <td>{{if .User}}{{.User.Username}}{{else}}-{{end}}</td>
+                                        <td>
+                                            {{if eq .Action "CREATE"}}<span class="badge bg-success">{{.Action}}</span>
+                                            {{else if eq .Action "UPDATE"}}<span class="badge bg-warning text-dark">{{.Action}}</span>
+                                            {{else if eq .Action "DELETE"}}<span class="badge bg-danger">{{.Action}}</span>
+                                            {{else if eq .Action "LOGIN"}}<span class="badge bg-info">{{.Action}}</span>
+                                            {{else if eq .Action "LOGOUT"}}<span class="badge bg-secondary">{{.Action}}</span>
+                                            {{else}}<span class="badge bg-light text-dark">{{.Action}}</span>
+                                            {{end}}
+                                        </td>
+                                        <td>{{.EntityType}}</td>
+                                        <td>{{.IPAddress}}</td>
+                                    </tr>
+                                    {{end}}
+                                    {{else}}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No audit logs available</td>
+                                    </tr>
+                                    {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{else if eq .role "MANAGER"}}
+        <!-- MANAGER Dashboard -->
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4"><i class="bi bi-speedometer2 me-2"></i>Manager Dashboard</h1>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
                 <div class="card bg-primary text-white">
                     <div class="card-body">
                         <div class="d-flex justify-content-between">
@@ -75,31 +264,16 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4 mb-4">
+            <div class="col-md-6 mb-4">
                 <div class="card bg-success text-white">
                     <div class="card-body">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <h5 class="card-title">Role</h5>
-                                <h2>{{.role}}</h2>
+                                <h5 class="card-title">Your Subordinates</h5>
+                                <h2>{{if .subordinateCount}}{{.subordinateCount}}{{else}}0{{end}}</h2>
                             </div>
                             <div class="fs-1">
-                                <i class="bi bi-shield-check"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-4">
-                <div class="card bg-info text-white">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <div>
-                                <h5 class="card-title">Email</h5>
-                                <h6>{{.user.Email}}</h6>
-                            </div>
-                            <div class="fs-1">
-                                <i class="bi bi-envelope"></i>
+                                <i class="bi bi-people"></i>
                             </div>
                         </div>
                     </div>
@@ -107,56 +281,305 @@
             </div>
         </div>
 
-        <div class="row mt-4">
-            <div class="col-md-6">
+        <div class="row">
+            <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <i class="bi bi-lightning me-2"></i>Quick Actions
+                        <i class="bi bi-info-circle me-2"></i>Manager Information
                     </div>
                     <div class="card-body">
-                        <div class="list-group list-group-flush">
-                            <a href="/profile" class="list-group-item list-group-item-action">
-                                <i class="bi bi-person me-2"></i>Edit Profile
+                        <p>As a Manager, you can:</p>
+                        <ul>
+                            <li>View and manage your subordinate users</li>
+                            <li>Add users to groups</li>
+                            <li>Create new users (as your subordinates)</li>
+                        </ul>
+                        <div class="mt-4">
+                            <a href="/users" class="btn btn-primary me-2">
+                                <i class="bi bi-people me-1"></i>Manage Users
                             </a>
-                            <a href="/users" class="list-group-item list-group-item-action">
-                                <i class="bi bi-people me-2"></i>View Users
+                            <a href="/groups" class="btn btn-outline-primary">
+                                <i class="bi bi-diagram-3 me-1"></i>View Groups
                             </a>
-                            {{if eq .role "ADMIN"}}
-                            <a href="/groups" class="list-group-item list-group-item-action">
-                                <i class="bi bi-diagram-3 me-2"></i>Manage Groups
-                            </a>
-                            {{end}}
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
+        </div>
+
+        {{else}}
+        <!-- USER Dashboard -->
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4"><i class="bi bi-person-circle me-2"></i>My Profile</h1>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
                 <div class="card">
                     <div class="card-header">
-                        <i class="bi bi-info-circle me-2"></i>System Info
+                        <i class="bi bi-person me-2"></i>Profile Information
                     </div>
                     <div class="card-body">
-                        <table class="table table-borderless mb-0">
-                            <tr>
-                                <th>Application:</th>
-                                <td>OpenVPN Manager</td>
-                            </tr>
-                            <tr>
-                                <th>Version:</th>
-                                <td>1.0.0</td>
-                            </tr>
-                            <tr>
-                                <th>Status:</th>
-                                <td><span class="badge bg-success">Online</span></td>
-                            </tr>
-                        </table>
+                        <div class="row mb-3">
+                            <div class="col-md-4 fw-bold">Username:</div>
+                            <div class="col-md-8">{{.user.Username}}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 fw-bold">Name:</div>
+                            <div class="col-md-8">{{.user.FirstName}} {{if .user.MiddleName}}{{.user.MiddleName}} {{end}}{{.user.LastName}}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 fw-bold">Email:</div>
+                            <div class="col-md-8">{{.user.Email}}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 fw-bold">Telephone:</div>
+                            <div class="col-md-8">{{if .user.Telephone}}{{.user.Telephone}}{{else}}-{{end}}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 fw-bold">Role:</div>
+                            <div class="col-md-8"><span class="badge bg-secondary">{{.role}}</span></div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4 fw-bold">Status:</div>
+                            <div class="col-md-8">
+                                {{if .user.IsActive}}
+                                <span class="badge bg-success">Active</span>
+                                {{else}}
+                                <span class="badge bg-danger">Inactive</span>
+                                {{end}}
+                            </div>
+                        </div>
+                        {{if .user.VpnIP}}
+                        <div class="row mb-3">
+                            <div class="col-md-4 fw-bold">VPN IP:</div>
+                            <div class="col-md-8"><code>{{.user.VpnIP}}</code></div>
+                        </div>
+                        {{end}}
+                        {{if .user.ValidFrom}}
+                        <div class="row mb-3">
+                            <div class="col-md-4 fw-bold">Valid From:</div>
+                            <div class="col-md-8">{{.user.ValidFrom.Format "2006-01-02"}}</div>
+                        </div>
+                        {{end}}
+                        {{if .user.ValidTo}}
+                        <div class="row mb-3">
+                            <div class="col-md-4 fw-bold">Valid To:</div>
+                            <div class="col-md-8">{{.user.ValidTo.Format "2006-01-02"}}</div>
+                        </div>
+                        {{end}}
+                        <hr>
+                        <div class="d-flex gap-2">
+                            <a href="/profile" class="btn btn-primary">
+                                <i class="bi bi-pencil me-1"></i>Edit Profile
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                                <i class="bi bi-key me-1"></i>Change Password
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-primary text-white mb-4">
+                    <div class="card-body text-center">
+                        <i class="bi bi-person-circle display-1"></i>
+                        <h4 class="mt-3">{{.user.FirstName}} {{.user.LastName}}</h4>
+                        <p class="mb-0">{{.user.Email}}</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-shield-check me-2"></i>Account Status
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">
+                            <strong>Account:</strong>
+                            {{if .user.IsActive}}
+                            <span class="text-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                            {{else}}
+                            <span class="text-danger"><i class="bi bi-x-circle me-1"></i>Inactive</span>
+                            {{end}}
+                        </p>
+                        <p class="mb-0 text-muted small">
+                            Member since: {{.user.CreatedAt.Format "Jan 2, 2006"}}
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Change Password Modal -->
+        <div class="modal fade" id="changePasswordModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="bi bi-key me-2"></i>Change Password</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form id="changePasswordForm">
+                        <div class="modal-body">
+                            <div id="passwordAlert" class="alert d-none"></div>
+                            <div class="mb-3">
+                                <label for="currentPassword" class="form-label">Current Password</label>
+                                <input type="password" class="form-control" id="currentPassword" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="newPassword" class="form-label">New Password</label>
+                                <input type="password" class="form-control" id="newPassword" required minlength="8">
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" id="confirmPassword" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Change Password</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {{end}}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/app.js"></script>
+
+    {{if eq .role "ADMIN"}}
+    <script>
+        // Traffic charts for ADMIN
+        document.addEventListener('DOMContentLoaded', function() {
+            {{if .stats}}
+            const trafficData = {{.stats.TrafficStats}};
+            const labels = trafficData.map(d => d.date.substring(5)); // MM-DD format
+            const receivedData = trafficData.map(d => d.bytes_received / (1024 * 1024)); // Convert to MB
+            const sentData = trafficData.map(d => d.bytes_sent / (1024 * 1024)); // Convert to MB
+
+            // Received Chart
+            new Chart(document.getElementById('receivedChart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Received (MB)',
+                        data: receivedData,
+                        borderColor: 'rgb(25, 135, 84)',
+                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(2) + ' MB';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Sent Chart
+            new Chart(document.getElementById('sentChart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Sent (MB)',
+                        data: sentData,
+                        borderColor: 'rgb(13, 110, 253)',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(2) + ' MB';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            {{end}}
+        });
+    </script>
+    {{end}}
+
+    {{if eq .role "USER"}}
+    <script>
+        // Change password form handler
+        document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const alert = document.getElementById('passwordAlert');
+            alert.classList.add('d-none');
+
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                alert.className = 'alert alert-danger';
+                alert.textContent = 'New passwords do not match';
+                alert.classList.remove('d-none');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/v1/users/password', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert.className = 'alert alert-success';
+                    alert.textContent = 'Password changed successfully';
+                    alert.classList.remove('d-none');
+                    document.getElementById('changePasswordForm').reset();
+                    setTimeout(() => {
+                        bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+                    }, 2000);
+                } else {
+                    alert.className = 'alert alert-danger';
+                    alert.textContent = data.message || 'Failed to change password';
+                    alert.classList.remove('d-none');
+                }
+            } catch (error) {
+                alert.className = 'alert alert-danger';
+                alert.textContent = 'Connection error. Please try again.';
+                alert.classList.remove('d-none');
+            }
+        });
+    </script>
+    {{end}}
 </body>
 </html>

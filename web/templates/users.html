@@ -24,15 +24,32 @@
                             <i class="bi bi-speedometer2 me-1"></i>Dashboard
                         </a>
                     </li>
+                    {{if or (eq .role "ADMIN") (eq .role "MANAGER")}}
                     <li class="nav-item">
                         <a class="nav-link active" href="/users">
                             <i class="bi bi-people me-1"></i>Users
                         </a>
                     </li>
-                    {{if or (eq .role "ADMIN") (eq .role "MANAGER")}}
                     <li class="nav-item">
                         <a class="nav-link" href="/groups">
                             <i class="bi bi-diagram-3 me-1"></i>Groups
+                        </a>
+                    </li>
+                    {{end}}
+                    {{if eq .role "ADMIN"}}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/networks">
+                            <i class="bi bi-hdd-network me-1"></i>Networks
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/audit">
+                            <i class="bi bi-journal-text me-1"></i>Audit
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/sessions">
+                            <i class="bi bi-clock-history me-1"></i>History
                         </a>
                     </li>
                     {{end}}
@@ -58,64 +75,111 @@
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1><i class="bi bi-people me-2"></i>Users</h1>
-                    {{if eq .role "ADMIN"}}
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                        <i class="bi bi-plus-lg me-1"></i>Add User
+                    {{if or (eq .role "ADMIN") (eq .role "MANAGER")}}
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+                        <i class="bi bi-plus-lg me-1"></i>Create User
                     </button>
                     {{end}}
                 </div>
             </div>
         </div>
 
+        <!-- Alert Container -->
+        <div id="alertContainer"></div>
+
         <div class="card">
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
                             <tr>
                                 <th>Username</th>
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Role</th>
+                                <th>Groups</th>
+                                <th>Status</th>
+                                <th>VPN IP</th>
+                                <th>Valid Period</th>
                                 <th>Created</th>
-                                <th>Actions</th>
+                                <th class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {{range .users}}
                             <tr>
-                                <td>{{.Username}}</td>
+                                <td>
+                                    <strong>{{.Username}}</strong>
+                                </td>
                                 <td>{{.FirstName}} {{.LastName}}</td>
                                 <td>{{.Email}}</td>
                                 <td>
                                     {{if eq .Role "ADMIN"}}
                                     <span class="badge bg-danger">{{.Role}}</span>
                                     {{else if eq .Role "MANAGER"}}
-                                    <span class="badge bg-warning">{{.Role}}</span>
+                                    <span class="badge bg-warning text-dark">{{.Role}}</span>
                                     {{else}}
                                     <span class="badge bg-secondary">{{.Role}}</span>
                                     {{end}}
                                 </td>
-                                <td>{{.CreatedAt.Format "2006-01-02"}}</td>
                                 <td>
-                                    <a href="/users/{{.ID}}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    {{if or (eq $.role "ADMIN") (eq $.role "MANAGER")}}
-                                    <button class="btn btn-sm btn-outline-warning" onclick="editUser('{{.ID}}')">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
+                                    <span class="user-groups-badges" id="groups-{{.ID}}">
+                                        <span class="text-muted">Loading...</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    {{if .IsActive}}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                                    {{else}}
+                                    <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Inactive</span>
                                     {{end}}
-                                    {{if eq $.role "ADMIN"}}
-                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('{{.ID}}')">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                </td>
+                                <td>
+                                    {{if .VpnIP}}
+                                    <code>{{.VpnIP}}</code>
+                                    {{else}}
+                                    <span class="text-muted">-</span>
                                     {{end}}
+                                </td>
+                                <td>
+                                    {{if or .ValidFrom .ValidTo}}
+                                    <small>
+                                        {{if .ValidFrom}}{{.ValidFrom.Format "2006-01-02"}}{{else}}-{{end}}
+                                        <i class="bi bi-arrow-right mx-1"></i>
+                                        {{if .ValidTo}}{{.ValidTo.Format "2006-01-02"}}{{else}}-{{end}}
+                                    </small>
+                                    {{else}}
+                                    <span class="text-muted">No limit</span>
+                                    {{end}}
+                                </td>
+                                <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-info" onclick="viewUser('{{.ID}}')" title="View">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        {{if or (eq $.role "ADMIN") (eq $.role "MANAGER")}}
+                                        <button class="btn btn-outline-primary" onclick="manageUserGroups('{{.ID}}', '{{.Username}}')" title="Manage Groups">
+                                            <i class="bi bi-diagram-3"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning" onclick="editUser('{{.ID}}')" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        {{end}}
+                                        {{if eq $.role "ADMIN"}}
+                                        <button class="btn btn-outline-danger" onclick="confirmDeleteUser('{{.ID}}', '{{.Username}}')" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {{end}}
+                                    </div>
                                 </td>
                             </tr>
                             {{else}}
                             <tr>
-                                <td colspan="6" class="text-center text-muted">No users found</td>
+                                <td colspan="10" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    No users found
+                                </td>
                             </tr>
                             {{end}}
                         </tbody>
@@ -125,51 +189,301 @@
         </div>
     </div>
 
-    <!-- Add User Modal -->
-    <div class="modal fade" id="addUserModal" tabindex="-1">
-        <div class="modal-dialog">
+    <!-- View User Modal -->
+    <div class="modal fade" id="viewUserModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add New User</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="bi bi-person me-2"></i>User Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <form id="addUserForm">
-                        <div class="mb-3">
-                            <label for="newUsername" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="newUsername" required>
+                <div class="modal-body" id="viewUserContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
-                        <div class="mb-3">
-                            <label for="newPassword" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="newPassword" required>
-                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    {{if or (eq .role "ADMIN") (eq .role "MANAGER")}}
+                    <button type="button" class="btn btn-warning" id="viewToEditBtn" onclick="viewToEdit()">
+                        <i class="bi bi-pencil me-1"></i>Edit
+                    </button>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div class="modal fade" id="createUserModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Create New User</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="createUserForm" onsubmit="createUser(event)">
+                    <div class="modal-body">
+                        <div id="createUserAlert" class="alert d-none"></div>
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="newFirstName" class="form-label">First Name</label>
-                                <input type="text" class="form-control" id="newFirstName" required>
+                                <label for="createUsername" class="form-label">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="createUsername" required>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="newLastName" class="form-label">Last Name</label>
-                                <input type="text" class="form-control" id="newLastName" required>
+                                <label for="createPassword" class="form-label">Password <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="createPassword" required minlength="8">
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="newEmail" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="newEmail" required>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="createFirstName" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="createFirstName" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="createMiddleName" class="form-label">Middle Name</label>
+                                <input type="text" class="form-control" id="createMiddleName">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="createLastName" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="createLastName" required>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="newRole" class="form-label">Role</label>
-                            <select class="form-select" id="newRole" required>
-                                <option value="USER">USER</option>
-                                <option value="MANAGER">MANAGER</option>
-                                <option value="ADMIN">ADMIN</option>
-                            </select>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="createEmail" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="createEmail" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="createTelephone" class="form-label">Telephone</label>
+                                <input type="tel" class="form-control" id="createTelephone">
+                            </div>
                         </div>
-                    </form>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="createRole" class="form-label">Role <span class="text-danger">*</span></label>
+                                <select class="form-select" id="createRole" required>
+                                    <option value="USER">USER</option>
+                                    {{if eq .role "ADMIN"}}
+                                    <option value="MANAGER">MANAGER</option>
+                                    <option value="ADMIN">ADMIN</option>
+                                    {{end}}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="createIsActive" class="form-label">Status</label>
+                                <select class="form-select" id="createIsActive">
+                                    <option value="true" selected>Active</option>
+                                    <option value="false">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h6 class="mb-3"><i class="bi bi-shield-lock me-2"></i>VPN Settings</h6>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="createVpnIP" class="form-label">Static VPN IP</label>
+                                <input type="text" class="form-control" id="createVpnIP" placeholder="e.g., 10.8.0.100">
+                                <small class="text-muted">Leave empty for dynamic IP</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="createValidFrom" class="form-label">Valid From</label>
+                                <input type="date" class="form-control" id="createValidFrom">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="createValidTo" class="form-label">Valid To</label>
+                                <input type="date" class="form-control" id="createValidTo">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-lg me-1"></i>Create User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit User</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="editUserForm" onsubmit="updateUser(event)">
+                    <input type="hidden" id="editUserId">
+                    <div class="modal-body">
+                        <div id="editUserAlert" class="alert d-none"></div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="editUsername" class="form-label">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="editUsername" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="editPassword" class="form-label">New Password</label>
+                                <input type="password" class="form-control" id="editPassword" minlength="8" placeholder="Leave empty to keep current">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="editFirstName" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="editFirstName" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="editMiddleName" class="form-label">Middle Name</label>
+                                <input type="text" class="form-control" id="editMiddleName">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="editLastName" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="editLastName" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="editEmail" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="editEmail" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="editTelephone" class="form-label">Telephone</label>
+                                <input type="tel" class="form-control" id="editTelephone">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="editRole" class="form-label">Role <span class="text-danger">*</span></label>
+                                <select class="form-select" id="editRole" required {{if ne $.role "ADMIN"}}disabled{{end}}>
+                                    <option value="USER">USER</option>
+                                    <option value="MANAGER">MANAGER</option>
+                                    <option value="ADMIN">ADMIN</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="editIsActive" class="form-label">Status</label>
+                                <select class="form-select" id="editIsActive">
+                                    <option value="true">Active</option>
+                                    <option value="false">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h6 class="mb-3"><i class="bi bi-shield-lock me-2"></i>VPN Settings</h6>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="editVpnIP" class="form-label">Static VPN IP</label>
+                                <input type="text" class="form-control" id="editVpnIP" placeholder="e.g., 10.8.0.100">
+                                <small class="text-muted">Leave empty for dynamic IP</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="editValidFrom" class="form-label">Valid From</label>
+                                <input type="date" class="form-control" id="editValidFrom">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="editValidTo" class="form-label">Valid To</label>
+                                <input type="date" class="form-control" id="editValidTo">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-check-lg me-1"></i>Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete user <strong id="deleteUserName"></strong>?</p>
+                    <p class="text-danger mb-0"><small>This action cannot be undone.</small></p>
+                    <input type="hidden" id="deleteUserId">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="createUser()">Create User</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteUser()">
+                        <i class="bi bi-trash me-1"></i>Delete User
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage User Groups Modal -->
+    <div class="modal fade" id="manageGroupsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-diagram-3 me-2"></i>Manage Groups - <span id="manageGroupsUsername"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="manageGroupsUserId">
+
+                    <!-- Add Group -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <i class="bi bi-plus-circle me-2"></i>Add to Group
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-end">
+                                <div class="col-md-9">
+                                    <label for="addGroupSelect" class="form-label">Select Group</label>
+                                    <select class="form-select" id="addGroupSelect">
+                                        <option value="">-- Select a group --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <button type="button" class="btn btn-success w-100" onclick="addUserToGroup()">
+                                        <i class="bi bi-plus-lg me-1"></i>Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Groups -->
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <i class="bi bi-collection me-2"></i>Current Groups & Networks
+                        </div>
+                        <div class="card-body" id="userGroupsList">
+                            <div class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -178,14 +492,436 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/app.js"></script>
     <script>
-        async function createUser() {
+        let currentViewUserId = null;
+        let allGroups = [];
+
+        // Load user groups on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAllGroups();
+            loadAllUserGroups();
+        });
+
+        async function loadAllGroups() {
+            try {
+                const response = await fetch('/api/v1/groups?page_size=1000');
+                if (response.ok) {
+                    const data = await response.json();
+                    allGroups = data.groups || [];
+                }
+            } catch (error) {
+                console.error('Failed to load groups:', error);
+            }
+        }
+
+        async function loadAllUserGroups() {
+            const userIds = [];
+            document.querySelectorAll('[id^="groups-"]').forEach(el => {
+                const userId = el.id.replace('groups-', '');
+                userIds.push(userId);
+            });
+
+            for (const userId of userIds) {
+                try {
+                    const response = await fetch(`/api/v1/users/${userId}/groups`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        renderUserGroupsBadges(userId, data.groups || []);
+                    } else {
+                        document.getElementById(`groups-${userId}`).innerHTML = '<span class="text-muted">-</span>';
+                    }
+                } catch (error) {
+                    document.getElementById(`groups-${userId}`).innerHTML = '<span class="text-muted">-</span>';
+                }
+            }
+        }
+
+        function renderUserGroupsBadges(userId, groups) {
+            const container = document.getElementById(`groups-${userId}`);
+            if (groups.length === 0) {
+                container.innerHTML = '<span class="text-muted">No groups</span>';
+            } else {
+                container.innerHTML = groups.map(g =>
+                    `<span class="badge bg-info me-1" title="${g.networks.length} networks">${g.name}</span>`
+                ).join('');
+            }
+        }
+
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            container.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        // View User
+        async function viewUser(id) {
+            currentViewUserId = id;
+            const modal = new bootstrap.Modal(document.getElementById('viewUserModal'));
+            modal.show();
+
+            document.getElementById('viewUserContent').innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+
+            try {
+                const [userResponse, groupsResponse] = await Promise.all([
+                    fetch(`/api/v1/users/${id}`),
+                    fetch(`/api/v1/users/${id}/groups`)
+                ]);
+
+                if (!userResponse.ok) throw new Error('Failed to load user');
+
+                const user = await userResponse.json();
+                const groupsData = groupsResponse.ok ? await groupsResponse.json() : { groups: [] };
+
+                renderUserDetail(user, groupsData.groups || []);
+            } catch (error) {
+                document.getElementById('viewUserContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function renderUserDetail(user, groups) {
+            const roleBadge = user.role === 'ADMIN' ? 'bg-danger' :
+                             user.role === 'MANAGER' ? 'bg-warning text-dark' : 'bg-secondary';
+
+            let groupsHtml = '';
+            if (groups.length === 0) {
+                groupsHtml = '<span class="text-muted">No groups assigned</span>';
+            } else {
+                groupsHtml = groups.map(g => {
+                    let networksHtml = '';
+                    if (g.networks && g.networks.length > 0) {
+                        networksHtml = `
+                            <div class="ms-3 mt-1">
+                                <small class="text-muted">Networks:</small>
+                                ${g.networks.map(n => `<span class="badge bg-secondary ms-1">${n.name} (${n.cidr})</span>`).join('')}
+                            </div>
+                        `;
+                    }
+                    return `
+                        <div class="mb-2">
+                            <span class="badge bg-info">${g.name}</span>
+                            ${g.description ? `<small class="text-muted ms-2">${g.description}</small>` : ''}
+                            ${networksHtml}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            document.getElementById('viewUserContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-4 text-center border-end">
+                        <div class="fs-1 text-primary mb-3">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <h4>${user.first_name} ${user.middle_name || ''} ${user.last_name}</h4>
+                        <p class="text-muted">@${user.username}</p>
+                        <span class="badge ${roleBadge}">${user.role}</span>
+                        ${user.is_active
+                            ? '<span class="badge bg-success ms-2">Active</span>'
+                            : '<span class="badge bg-danger ms-2">Inactive</span>'}
+                    </div>
+                    <div class="col-md-8">
+                        <table class="table table-borderless mb-0">
+                            <tr>
+                                <th width="35%"><i class="bi bi-envelope me-2"></i>Email:</th>
+                                <td>${user.email}</td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-telephone me-2"></i>Phone:</th>
+                                <td>${user.telephone || '<span class="text-muted">Not set</span>'}</td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-hdd-network me-2"></i>VPN IP:</th>
+                                <td>${user.vpn_ip ? '<code>' + user.vpn_ip + '</code>' : '<span class="text-muted">Dynamic</span>'}</td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-calendar-check me-2"></i>Valid From:</th>
+                                <td>${user.valid_from ? user.valid_from.substring(0, 10) : '<span class="text-muted">No limit</span>'}</td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-calendar-x me-2"></i>Valid To:</th>
+                                <td>${user.valid_to ? user.valid_to.substring(0, 10) : '<span class="text-muted">No limit</span>'}</td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-clock me-2"></i>Created:</th>
+                                <td>${new Date(user.created_at).toLocaleString()}</td>
+                            </tr>
+                            ${user.updated_at ? `
+                            <tr>
+                                <th><i class="bi bi-clock-history me-2"></i>Updated:</th>
+                                <td>${new Date(user.updated_at).toLocaleString()}</td>
+                            </tr>` : ''}
+                            ${user.manager ? `
+                            <tr>
+                                <th><i class="bi bi-person-badge me-2"></i>Manager:</th>
+                                <td>${user.manager.first_name} ${user.manager.last_name}</td>
+                            </tr>` : ''}
+                        </table>
+
+                        <hr>
+                        <h6 class="mb-3"><i class="bi bi-diagram-3 me-2"></i>Groups & Networks</h6>
+                        ${groupsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function viewToEdit() {
+            if (currentViewUserId) {
+                bootstrap.Modal.getInstance(document.getElementById('viewUserModal')).hide();
+                editUser(currentViewUserId);
+            }
+        }
+
+        // Manage User Groups
+        async function manageUserGroups(userId, username) {
+            document.getElementById('manageGroupsUserId').value = userId;
+            document.getElementById('manageGroupsUsername').textContent = username;
+
+            const modal = new bootstrap.Modal(document.getElementById('manageGroupsModal'));
+            modal.show();
+
+            await loadUserGroups(userId);
+        }
+
+        async function loadUserGroups(userId) {
+            document.getElementById('userGroupsList').innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    Loading...
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/v1/users/${userId}/groups`);
+                if (!response.ok) throw new Error('Failed to load user groups');
+
+                const data = await response.json();
+                const userGroups = data.groups || [];
+
+                // Update available groups dropdown
+                const assignedGroupIds = userGroups.map(g => g.id);
+                const availableGroups = allGroups.filter(g => !assignedGroupIds.includes(g.id));
+
+                const select = document.getElementById('addGroupSelect');
+                select.innerHTML = '<option value="">-- Select a group --</option>' +
+                    availableGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+
+                // Render user groups with networks
+                if (userGroups.length === 0) {
+                    document.getElementById('userGroupsList').innerHTML = `
+                        <p class="text-center text-muted mb-0">User is not assigned to any group</p>
+                    `;
+                } else {
+                    document.getElementById('userGroupsList').innerHTML = userGroups.map(g => {
+                        let networksHtml = '<span class="text-muted">No networks</span>';
+                        if (g.networks && g.networks.length > 0) {
+                            networksHtml = g.networks.map(n =>
+                                `<span class="badge bg-secondary me-1">${n.name} <small>(${n.cidr})</small></span>`
+                            ).join('');
+                        }
+
+                        return `
+                            <div class="d-flex justify-content-between align-items-start border-bottom py-2">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <span class="badge bg-info me-2">${g.name}</span>
+                                        ${g.description ? `<small class="text-muted">${g.description}</small>` : ''}
+                                    </h6>
+                                    <div class="small">
+                                        <i class="bi bi-hdd-network me-1"></i>Networks: ${networksHtml}
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeUserFromGroup('${g.id}', '${g.name}')">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                document.getElementById('userGroupsList').innerHTML = `
+                    <div class="alert alert-danger mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function addUserToGroup() {
+            const userId = document.getElementById('manageGroupsUserId').value;
+            const groupId = document.getElementById('addGroupSelect').value;
+
+            if (!groupId) {
+                showAlert('Please select a group', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/users/${userId}/groups`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ group_id: groupId })
+                });
+
+                if (response.ok) {
+                    showAlert('User added to group successfully');
+                    await loadUserGroups(userId);
+                    // Update the table badge
+                    const badgesResponse = await fetch(`/api/v1/users/${userId}/groups`);
+                    if (badgesResponse.ok) {
+                        const data = await badgesResponse.json();
+                        renderUserGroupsBadges(userId, data.groups || []);
+                    }
+                } else {
+                    const error = await response.json();
+                    showAlert(error.message || 'Failed to add user to group', 'danger');
+                }
+            } catch (error) {
+                showAlert('Connection error', 'danger');
+            }
+        }
+
+        async function removeUserFromGroup(groupId, groupName) {
+            if (!confirm(`Remove user from group "${groupName}"?`)) return;
+
+            const userId = document.getElementById('manageGroupsUserId').value;
+
+            try {
+                const response = await fetch(`/api/v1/users/${userId}/groups/${groupId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showAlert('User removed from group successfully');
+                    await loadUserGroups(userId);
+                    // Update the table badge
+                    const badgesResponse = await fetch(`/api/v1/users/${userId}/groups`);
+                    if (badgesResponse.ok) {
+                        const data = await badgesResponse.json();
+                        renderUserGroupsBadges(userId, data.groups || []);
+                    }
+                } else {
+                    const error = await response.json();
+                    showAlert(error.message || 'Failed to remove user from group', 'danger');
+                }
+            } catch (error) {
+                showAlert('Connection error', 'danger');
+            }
+        }
+
+        // Edit User
+        async function editUser(id) {
+            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            document.getElementById('editUserAlert').classList.add('d-none');
+
+            try {
+                const response = await fetch(`/api/v1/users/${id}`);
+                if (!response.ok) throw new Error('Failed to load user');
+                const user = await response.json();
+
+                document.getElementById('editUserId').value = user.id;
+                document.getElementById('editUsername').value = user.username;
+                document.getElementById('editPassword').value = '';
+                document.getElementById('editFirstName').value = user.first_name;
+                document.getElementById('editMiddleName').value = user.middle_name || '';
+                document.getElementById('editLastName').value = user.last_name;
+                document.getElementById('editEmail').value = user.email;
+                document.getElementById('editTelephone').value = user.telephone || '';
+                document.getElementById('editRole').value = user.role;
+                document.getElementById('editIsActive').value = user.is_active ? 'true' : 'false';
+                document.getElementById('editVpnIP').value = user.vpn_ip || '';
+                document.getElementById('editValidFrom').value = user.valid_from ? user.valid_from.substring(0, 10) : '';
+                document.getElementById('editValidTo').value = user.valid_to ? user.valid_to.substring(0, 10) : '';
+
+                modal.show();
+            } catch (error) {
+                showAlert(error.message, 'danger');
+            }
+        }
+
+        async function updateUser(event) {
+            event.preventDefault();
+            const alertEl = document.getElementById('editUserAlert');
+            alertEl.classList.add('d-none');
+
+            const id = document.getElementById('editUserId').value;
             const data = {
-                username: document.getElementById('newUsername').value,
-                password: document.getElementById('newPassword').value,
-                first_name: document.getElementById('newFirstName').value,
-                last_name: document.getElementById('newLastName').value,
-                email: document.getElementById('newEmail').value,
-                role: document.getElementById('newRole').value
+                username: document.getElementById('editUsername').value,
+                first_name: document.getElementById('editFirstName').value,
+                middle_name: document.getElementById('editMiddleName').value || null,
+                last_name: document.getElementById('editLastName').value,
+                email: document.getElementById('editEmail').value,
+                telephone: document.getElementById('editTelephone').value || null,
+                role: document.getElementById('editRole').value,
+                is_active: document.getElementById('editIsActive').value === 'true',
+                vpn_ip: document.getElementById('editVpnIP').value || null,
+                valid_from: document.getElementById('editValidFrom').value || null,
+                valid_to: document.getElementById('editValidTo').value || null
+            };
+
+            const password = document.getElementById('editPassword').value;
+            if (password) {
+                data.password = password;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/users/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+                    showAlert('User updated successfully');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    const error = await response.json();
+                    alertEl.className = 'alert alert-danger';
+                    alertEl.textContent = error.message || 'Failed to update user';
+                    alertEl.classList.remove('d-none');
+                }
+            } catch (error) {
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = 'Connection error';
+                alertEl.classList.remove('d-none');
+            }
+        }
+
+        // Create User
+        async function createUser(event) {
+            event.preventDefault();
+            const alertEl = document.getElementById('createUserAlert');
+            alertEl.classList.add('d-none');
+
+            const data = {
+                username: document.getElementById('createUsername').value,
+                password: document.getElementById('createPassword').value,
+                first_name: document.getElementById('createFirstName').value,
+                middle_name: document.getElementById('createMiddleName').value || null,
+                last_name: document.getElementById('createLastName').value,
+                email: document.getElementById('createEmail').value,
+                telephone: document.getElementById('createTelephone').value || null,
+                role: document.getElementById('createRole').value,
+                is_active: document.getElementById('createIsActive').value === 'true',
+                vpn_ip: document.getElementById('createVpnIP').value || null,
+                valid_from: document.getElementById('createValidFrom').value || null,
+                valid_to: document.getElementById('createValidTo').value || null
             };
 
             try {
@@ -196,34 +932,47 @@
                 });
 
                 if (response.ok) {
-                    window.location.reload();
+                    bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+                    showAlert('User created successfully');
+                    setTimeout(() => window.location.reload(), 1000);
                 } else {
                     const error = await response.json();
-                    alert(error.message || 'Failed to create user');
+                    alertEl.className = 'alert alert-danger';
+                    alertEl.textContent = error.message || 'Failed to create user';
+                    alertEl.classList.remove('d-none');
                 }
             } catch (error) {
-                alert('Connection error');
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = 'Connection error';
+                alertEl.classList.remove('d-none');
             }
         }
 
-        async function deleteUser(id) {
-            if (!confirm('Are you sure you want to delete this user?')) return;
+        // Delete User
+        function confirmDeleteUser(id, username) {
+            document.getElementById('deleteUserId').value = id;
+            document.getElementById('deleteUserName').textContent = username;
+            new bootstrap.Modal(document.getElementById('deleteUserModal')).show();
+        }
+
+        async function deleteUser() {
+            const id = document.getElementById('deleteUserId').value;
 
             try {
                 const response = await fetch(`/api/v1/users/${id}`, { method: 'DELETE' });
+
+                bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide();
+
                 if (response.ok) {
-                    window.location.reload();
+                    showAlert('User deleted successfully');
+                    setTimeout(() => window.location.reload(), 1000);
                 } else {
                     const error = await response.json();
-                    alert(error.message || 'Failed to delete user');
+                    showAlert(error.message || 'Failed to delete user', 'danger');
                 }
             } catch (error) {
-                alert('Connection error');
+                showAlert('Connection error', 'danger');
             }
-        }
-
-        function editUser(id) {
-            window.location.href = `/users/${id}`;
         }
     </script>
 </body>

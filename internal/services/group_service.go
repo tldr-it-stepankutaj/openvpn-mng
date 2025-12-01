@@ -158,3 +158,82 @@ func (s *GroupService) GetUserGroups(userID uuid.UUID) ([]models.Group, error) {
 
 	return groups, nil
 }
+
+// GetGroupNetworks gets all networks assigned to a group
+func (s *GroupService) GetGroupNetworks(groupID uuid.UUID) ([]models.Network, error) {
+	var networkGroups []models.NetworkGroup
+	if err := database.GetDB().Preload("Network").Where("group_id = ?", groupID).Find(&networkGroups).Error; err != nil {
+		return nil, err
+	}
+
+	networks := make([]models.Network, len(networkGroups))
+	for i, ng := range networkGroups {
+		if ng.Network != nil {
+			networks[i] = *ng.Network
+		}
+	}
+
+	return networks, nil
+}
+
+// AddNetworkToGroup adds a network to a group
+func (s *GroupService) AddNetworkToGroup(groupID, networkID, createdBy uuid.UUID) error {
+	// Verify group exists
+	if _, err := s.GetByID(groupID); err != nil {
+		return err
+	}
+
+	// Check if association already exists
+	var existing models.NetworkGroup
+	if err := database.GetDB().Where("group_id = ? AND network_id = ?", groupID, networkID).First(&existing).Error; err == nil {
+		return errors.New("network already assigned to this group")
+	}
+
+	networkGroup := &models.NetworkGroup{
+		GroupID:   groupID,
+		NetworkID: networkID,
+		CreatedBy: createdBy,
+	}
+
+	return database.GetDB().Create(networkGroup).Error
+}
+
+// RemoveNetworkFromGroup removes a network from a group
+func (s *GroupService) RemoveNetworkFromGroup(groupID, networkID uuid.UUID) error {
+	return database.GetDB().Where("group_id = ? AND network_id = ?", groupID, networkID).Delete(&models.NetworkGroup{}).Error
+}
+
+// GroupWithNetworks represents a group with its networks
+type GroupWithNetworks struct {
+	ID          uuid.UUID        `json:"id"`
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
+	Networks    []models.Network `json:"networks"`
+}
+
+// GetUserGroupsWithNetworks gets all groups a user belongs to with their networks
+func (s *GroupService) GetUserGroupsWithNetworks(userID uuid.UUID) ([]GroupWithNetworks, error) {
+	// Get user groups
+	groups, err := s.GetUserGroups(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]GroupWithNetworks, len(groups))
+	for i, group := range groups {
+		// Get networks for each group
+		networks, err := s.GetGroupNetworks(group.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		result[i] = GroupWithNetworks{
+			ID:          group.ID,
+			Name:        group.Name,
+			Description: group.Description,
+			Networks:    networks,
+		}
+	}
+
+	return result, nil
+}

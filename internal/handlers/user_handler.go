@@ -14,15 +14,17 @@ import (
 
 // UserHandler handles user requests
 type UserHandler struct {
-	userService *services.UserService
-	auditLogger *middleware.AuditLogger
+	userService  *services.UserService
+	groupService *services.GroupService
+	auditLogger  *middleware.AuditLogger
 }
 
 // NewUserHandler creates a new user handler
 func NewUserHandler() *UserHandler {
 	return &UserHandler{
-		userService: services.NewUserService(),
-		auditLogger: middleware.NewAuditLogger(),
+		userService:  services.NewUserService(),
+		groupService: services.NewGroupService(),
+		auditLogger:  middleware.NewAuditLogger(),
 	}
 }
 
@@ -452,5 +454,207 @@ func (h *UserHandler) List(c *gin.Context) {
 		Page:       page,
 		PageSize:   pageSize,
 		TotalPages: totalPages,
+	})
+}
+
+// GetGroups godoc
+// @Summary Get user groups
+// @Description Get all groups a user belongs to with their networks
+// @Tags users
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 200 {object} dto.UserGroupsResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Router /api/v1/users/{id}/groups [get]
+func (h *UserHandler) GetGroups(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Bad Request",
+			Message: "Invalid user ID",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	// Check access
+	authUser := middleware.GetAuthUser(c)
+	authUserID := middleware.GetAuthUserID(c)
+
+	user, err := h.userService.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{
+			Error:   "Not Found",
+			Message: "User not found",
+			Code:    http.StatusNotFound,
+		})
+		return
+	}
+
+	// Check permissions
+	if authUser.Role == models.RoleUser && authUserID != user.ID {
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{
+			Error:   "Forbidden",
+			Message: "Access denied",
+			Code:    http.StatusForbidden,
+		})
+		return
+	}
+
+	if authUser.Role == models.RoleManager {
+		if authUserID != user.ID && (user.ManagerID == nil || *user.ManagerID != authUserID) {
+			c.JSON(http.StatusForbidden, dto.ErrorResponse{
+				Error:   "Forbidden",
+				Message: "Access denied",
+				Code:    http.StatusForbidden,
+			})
+			return
+		}
+	}
+
+	groups, err := h.groupService.GetUserGroupsWithNetworks(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "Internal Server Error",
+			Message: err.Error(),
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	// Convert to DTO
+	response := make([]dto.UserGroupWithNetworks, len(groups))
+	for i, g := range groups {
+		networks := make([]dto.NetworkBasicInfo, len(g.Networks))
+		for j, n := range g.Networks {
+			networks[j] = dto.NetworkBasicInfo{
+				ID:          n.ID,
+				Name:        n.Name,
+				CIDR:        n.CIDR,
+				Description: n.Description,
+			}
+		}
+		response[i] = dto.UserGroupWithNetworks{
+			ID:          g.ID,
+			Name:        g.Name,
+			Description: g.Description,
+			Networks:    networks,
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.UserGroupsResponse{
+		Groups: response,
+	})
+}
+
+// AddGroup godoc
+// @Summary Add user to group
+// @Description Add a user to a group
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Param request body dto.AddUserGroupRequest true "Group ID"
+// @Success 200 {object} dto.SuccessResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Router /api/v1/users/{id}/groups [post]
+func (h *UserHandler) AddGroup(c *gin.Context) {
+	idStr := c.Param("id")
+	userID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Bad Request",
+			Message: "Invalid user ID",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	var req dto.AddUserGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Bad Request",
+			Message: err.Error(),
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	authUserID := middleware.GetAuthUserID(c)
+
+	if err := h.groupService.AddUserToGroup(req.GroupID, userID, authUserID); err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "Internal Server Error",
+			Message: err.Error(),
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	h.auditLogger.Log(c, models.AuditActionUpdate, "user_group", &userID, nil, nil, "Added user to group")
+
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Message: "User added to group successfully",
+	})
+}
+
+// RemoveGroup godoc
+// @Summary Remove user from group
+// @Description Remove a user from a group
+// @Tags users
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Param group_id path string true "Group ID"
+// @Success 200 {object} dto.SuccessResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Router /api/v1/users/{id}/groups/{group_id} [delete]
+func (h *UserHandler) RemoveGroup(c *gin.Context) {
+	userIDStr := c.Param("id")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Bad Request",
+			Message: "Invalid user ID",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	groupIDStr := c.Param("group_id")
+	groupID, err := uuid.Parse(groupIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Bad Request",
+			Message: "Invalid group ID",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	if err := h.groupService.RemoveUserFromGroup(groupID, userID); err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "Internal Server Error",
+			Message: err.Error(),
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	h.auditLogger.Log(c, models.AuditActionUpdate, "user_group", &userID, nil, nil, "Removed user from group")
+
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Message: "User removed from group successfully",
 	})
 }

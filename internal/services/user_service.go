@@ -53,8 +53,8 @@ func (s *UserService) Create(req *dto.CreateUserRequest, createdBy uuid.UUID) (*
 		Telephone:  req.Telephone,
 		Role:       req.Role,
 		IsActive:   isActive,
-		ValidFrom:  req.ValidFrom,
-		ValidTo:    req.ValidTo,
+		ValidFrom:  req.ValidFrom.ToTimePtr(),
+		ValidTo:    req.ValidTo.ToTimePtr(),
 		VpnIP:      req.VpnIP,
 		CreatedBy:  createdBy,
 	}
@@ -124,10 +124,10 @@ func (s *UserService) Update(id uuid.UUID, req *dto.UpdateUserRequest, updatedBy
 		updates["is_active"] = *req.IsActive
 	}
 	if req.ValidFrom != nil {
-		updates["valid_from"] = req.ValidFrom
+		updates["valid_from"] = req.ValidFrom.ToTimePtr()
 	}
 	if req.ValidTo != nil {
-		updates["valid_to"] = req.ValidTo
+		updates["valid_to"] = req.ValidTo.ToTimePtr()
 	}
 	if req.VpnIP != nil {
 		updates["vpn_ip"] = *req.VpnIP

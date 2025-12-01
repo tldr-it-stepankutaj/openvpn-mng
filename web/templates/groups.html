@@ -24,6 +24,7 @@
                             <i class="bi bi-speedometer2 me-1"></i>Dashboard
                         </a>
                     </li>
+                    {{if or (eq .role "ADMIN") (eq .role "MANAGER")}}
                     <li class="nav-item">
                         <a class="nav-link" href="/users">
                             <i class="bi bi-people me-1"></i>Users
@@ -34,6 +35,24 @@
                             <i class="bi bi-diagram-3 me-1"></i>Groups
                         </a>
                     </li>
+                    {{end}}
+                    {{if eq .role "ADMIN"}}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/networks">
+                            <i class="bi bi-hdd-network me-1"></i>Networks
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/audit">
+                            <i class="bi bi-journal-text me-1"></i>Audit
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/sessions">
+                            <i class="bi bi-clock-history me-1"></i>History
+                        </a>
+                    </li>
+                    {{end}}
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item dropdown">
@@ -57,72 +76,240 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1><i class="bi bi-diagram-3 me-2"></i>Groups</h1>
                     {{if eq .role "ADMIN"}}
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addGroupModal">
-                        <i class="bi bi-plus-lg me-1"></i>Add Group
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createGroupModal">
+                        <i class="bi bi-plus-lg me-1"></i>Create Group
                     </button>
                     {{end}}
                 </div>
             </div>
         </div>
 
-        <div class="row">
-            {{range .groups}}
-            <div class="col-md-4 mb-4">
-                <div class="card h-100">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-folder me-2"></i>{{.Name}}</h5>
-                        {{if eq $.role "ADMIN"}}
-                        <div class="btn-group">
-                            <button class="btn btn-sm btn-outline-warning" onclick="editGroup('{{.ID}}')">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="deleteGroup('{{.ID}}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                        {{end}}
-                    </div>
-                    <div class="card-body">
-                        <p class="card-text">{{if .Description}}{{.Description}}{{else}}<span class="text-muted">No description</span>{{end}}</p>
-                    </div>
-                    <div class="card-footer text-muted">
-                        <small>Created: {{.CreatedAt.Format "2006-01-02 15:04"}}</small>
-                    </div>
+        <!-- Alert Container -->
+        <div id="alertContainer"></div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Users</th>
+                                <th>Networks</th>
+                                <th>Created</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .groups}}
+                            <tr>
+                                <td>
+                                    <i class="bi bi-folder me-2 text-primary"></i>
+                                    <strong>{{.Name}}</strong>
+                                </td>
+                                <td>
+                                    {{if .Description}}
+                                    {{.Description}}
+                                    {{else}}
+                                    <span class="text-muted">No description</span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    <span class="user-badges" data-group-id="{{.ID}}">
+                                        <span class="text-muted"><small>Loading...</small></span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="network-badges" data-group-id="{{.ID}}">
+                                        <span class="text-muted"><small>Loading...</small></span>
+                                    </span>
+                                </td>
+                                <td>{{.CreatedAt.Format "2006-01-02 15:04"}}</td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-info" onclick="viewGroup('{{.ID}}')" title="View">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        {{if eq $.role "ADMIN"}}
+                                        <button class="btn btn-outline-success" onclick="manageNetworks('{{.ID}}', '{{.Name}}')" title="Manage Networks">
+                                            <i class="bi bi-hdd-network"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning" onclick="editGroup('{{.ID}}')" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="confirmDeleteGroup('{{.ID}}', '{{.Name}}')" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {{end}}
+                                    </div>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    No groups found
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            {{else}}
-            <div class="col-12">
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle me-2"></i>No groups found
-                </div>
-            </div>
-            {{end}}
         </div>
     </div>
 
-    <!-- Add Group Modal -->
-    <div class="modal fade" id="addGroupModal" tabindex="-1">
+    <!-- View Group Modal -->
+    <div class="modal fade" id="viewGroupModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="bi bi-diagram-3 me-2"></i>Group Details</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="viewGroupContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    {{if eq .role "ADMIN"}}
+                    <button type="button" class="btn btn-warning" id="viewToEditBtn" onclick="viewToEdit()">
+                        <i class="bi bi-pencil me-1"></i>Edit
+                    </button>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div class="modal fade" id="createGroupModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add New Group</h5>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-folder-plus me-2"></i>Create New Group</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="createGroupForm" onsubmit="createGroup(event)">
+                    <div class="modal-body">
+                        <div id="createGroupAlert" class="alert d-none"></div>
+                        <div class="mb-3">
+                            <label for="createName" class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="createName" required maxlength="100">
+                        </div>
+                        <div class="mb-3">
+                            <label for="createDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="createDescription" rows="3" maxlength="500"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-lg me-1"></i>Create Group
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Group Modal -->
+    <div class="modal fade" id="editGroupModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Group</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
+                <form id="editGroupForm" onsubmit="updateGroup(event)">
+                    <input type="hidden" id="editGroupId">
+                    <div class="modal-body">
+                        <div id="editGroupAlert" class="alert d-none"></div>
+                        <div class="mb-3">
+                            <label for="editName" class="form-label">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editName" required maxlength="100">
+                        </div>
+                        <div class="mb-3">
+                            <label for="editDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="editDescription" rows="3" maxlength="500"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-check-lg me-1"></i>Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteGroupModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
                 <div class="modal-body">
-                    <form id="addGroupForm">
-                        <div class="mb-3">
-                            <label for="newGroupName" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="newGroupName" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="newGroupDescription" class="form-label">Description</label>
-                            <textarea class="form-control" id="newGroupDescription" rows="3"></textarea>
-                        </div>
-                    </form>
+                    <p>Are you sure you want to delete group <strong id="deleteGroupName"></strong>?</p>
+                    <p class="text-danger mb-0"><small>This action cannot be undone. Users in this group will be removed from it.</small></p>
+                    <input type="hidden" id="deleteGroupId">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="createGroup()">Create Group</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteGroup()">
+                        <i class="bi bi-trash me-1"></i>Delete Group
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Networks Modal -->
+    <div class="modal fade" id="manageNetworksModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-hdd-network me-2"></i>Manage Networks - <span id="manageNetworksGroupName"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="manageNetworksAlert" class="alert d-none"></div>
+
+                    <!-- Assigned Networks -->
+                    <h6 class="mb-3"><i class="bi bi-check-circle text-success me-2"></i>Assigned Networks</h6>
+                    <div id="assignedNetworks" class="mb-4">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Available Networks -->
+                    <h6 class="mb-3"><i class="bi bi-plus-circle text-primary me-2"></i>Available Networks</h6>
+                    <div id="availableNetworks">
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="manageNetworksGroupId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -131,10 +318,362 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/app.js"></script>
     <script>
-        async function createGroup() {
+        let currentViewGroupId = null;
+        let allNetworks = [];
+
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            container.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        // Load networks for each group on page load
+        async function loadGroupNetworks() {
+            const badges = document.querySelectorAll('.network-badges');
+            for (const badge of badges) {
+                const groupId = badge.dataset.groupId;
+                try {
+                    const response = await fetch(`/api/v1/groups/${groupId}/networks`);
+                    if (response.ok) {
+                        const networks = await response.json();
+                        if (networks && networks.length > 0) {
+                            badge.innerHTML = networks.map(n =>
+                                `<span class="badge bg-success me-1"><i class="bi bi-hdd-network me-1"></i>${n.name}</span>`
+                            ).join('');
+                        } else {
+                            badge.innerHTML = '<span class="text-muted"><small>No networks</small></span>';
+                        }
+                    }
+                } catch (error) {
+                    badge.innerHTML = '<span class="text-danger"><small>Error</small></span>';
+                }
+            }
+        }
+
+        // View Group
+        async function viewGroup(id) {
+            currentViewGroupId = id;
+            const modal = new bootstrap.Modal(document.getElementById('viewGroupModal'));
+            modal.show();
+
+            document.getElementById('viewGroupContent').innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+
+            try {
+                const [groupResponse, networksResponse, usersResponse] = await Promise.all([
+                    fetch(`/api/v1/groups/${id}`),
+                    fetch(`/api/v1/groups/${id}/networks`),
+                    fetch(`/api/v1/groups/${id}/users`)
+                ]);
+
+                if (!groupResponse.ok) throw new Error('Failed to load group');
+                const group = await groupResponse.json();
+                const networks = networksResponse.ok ? await networksResponse.json() : [];
+                const users = usersResponse.ok ? await usersResponse.json() : [];
+
+                renderGroupDetail(group, networks, users);
+            } catch (error) {
+                document.getElementById('viewGroupContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function renderGroupDetail(group, networks, users) {
+            const networksHtml = networks && networks.length > 0
+                ? networks.map(n => `<span class="badge bg-success me-1"><i class="bi bi-hdd-network me-1"></i>${n.name} <small>(${n.cidr})</small></span>`).join('')
+                : '<span class="text-muted">No networks assigned</span>';
+
+            const usersHtml = users && users.length > 0
+                ? users.map(u => `<span class="badge bg-info me-1"><i class="bi bi-person me-1"></i>${u.username}</span>`).join('')
+                : '<span class="text-muted">No users assigned</span>';
+
+            document.getElementById('viewGroupContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-4 text-center border-end">
+                        <div class="fs-1 text-primary mb-3">
+                            <i class="bi bi-folder"></i>
+                        </div>
+                        <h4>${group.name}</h4>
+                        <p class="text-muted">${group.description || 'No description'}</p>
+                    </div>
+                    <div class="col-md-8">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <th width="35%"><i class="bi bi-hash me-2"></i>ID:</th>
+                                <td><code class="small">${group.id}</code></td>
+                            </tr>
+                            <tr>
+                                <th><i class="bi bi-clock me-2"></i>Created:</th>
+                                <td>${new Date(group.created_at).toLocaleString()}</td>
+                            </tr>
+                            ${group.updated_at ? `
+                            <tr>
+                                <th><i class="bi bi-clock-history me-2"></i>Updated:</th>
+                                <td>${new Date(group.updated_at).toLocaleString()}</td>
+                            </tr>` : ''}
+                        </table>
+                        <hr>
+                        <h6><i class="bi bi-people me-2"></i>Users (${users ? users.length : 0})</h6>
+                        <div class="mt-2 mb-3">
+                            ${usersHtml}
+                        </div>
+                        <p class="text-muted small"><i class="bi bi-info-circle me-1"></i>User assignments are managed from the Users page</p>
+                        <hr>
+                        <h6><i class="bi bi-hdd-network me-2"></i>Networks (${networks ? networks.length : 0})</h6>
+                        <div class="mt-2">
+                            ${networksHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function viewToEdit() {
+            if (currentViewGroupId) {
+                bootstrap.Modal.getInstance(document.getElementById('viewGroupModal')).hide();
+                editGroup(currentViewGroupId);
+            }
+        }
+
+        // Manage Networks
+        async function manageNetworks(groupId, groupName) {
+            document.getElementById('manageNetworksGroupId').value = groupId;
+            document.getElementById('manageNetworksGroupName').textContent = groupName;
+            document.getElementById('manageNetworksAlert').classList.add('d-none');
+
+            const modal = new bootstrap.Modal(document.getElementById('manageNetworksModal'));
+            modal.show();
+
+            // Load data
+            await loadManageNetworksData(groupId);
+        }
+
+        async function loadManageNetworksData(groupId) {
+            document.getElementById('assignedNetworks').innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                </div>
+            `;
+            document.getElementById('availableNetworks').innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                </div>
+            `;
+
+            try {
+                const [assignedResponse, allResponse] = await Promise.all([
+                    fetch(`/api/v1/groups/${groupId}/networks`),
+                    fetch('/api/v1/networks')
+                ]);
+
+                const assignedNetworks = assignedResponse.ok ? await assignedResponse.json() : [];
+                const allNetworksData = allResponse.ok ? await allResponse.json() : { networks: [] };
+                allNetworks = allNetworksData.networks || [];
+
+                const assignedIds = new Set(assignedNetworks.map(n => n.id));
+                const availableNetworks = allNetworks.filter(n => !assignedIds.has(n.id));
+
+                renderAssignedNetworks(assignedNetworks, groupId);
+                renderAvailableNetworks(availableNetworks, groupId);
+            } catch (error) {
+                document.getElementById('assignedNetworks').innerHTML = `
+                    <div class="alert alert-danger">Failed to load networks</div>
+                `;
+            }
+        }
+
+        function renderAssignedNetworks(networks, groupId) {
+            if (!networks || networks.length === 0) {
+                document.getElementById('assignedNetworks').innerHTML = `
+                    <div class="text-muted text-center py-3">
+                        <i class="bi bi-inbox d-block mb-2"></i>
+                        No networks assigned to this group
+                    </div>
+                `;
+                return;
+            }
+
+            document.getElementById('assignedNetworks').innerHTML = `
+                <div class="list-group">
+                    ${networks.map(n => `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-hdd-network text-success me-2"></i>
+                                <strong>${n.name}</strong>
+                                <code class="ms-2">${n.cidr}</code>
+                                ${n.description ? `<br><small class="text-muted">${n.description}</small>` : ''}
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger" onclick="removeNetwork('${groupId}', '${n.id}', '${n.name}')">
+                                <i class="bi bi-x-lg"></i> Remove
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderAvailableNetworks(networks, groupId) {
+            if (!networks || networks.length === 0) {
+                document.getElementById('availableNetworks').innerHTML = `
+                    <div class="text-muted text-center py-3">
+                        <i class="bi bi-check-circle d-block mb-2"></i>
+                        All networks are already assigned
+                    </div>
+                `;
+                return;
+            }
+
+            document.getElementById('availableNetworks').innerHTML = `
+                <div class="list-group">
+                    ${networks.map(n => `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-hdd-network text-muted me-2"></i>
+                                <strong>${n.name}</strong>
+                                <code class="ms-2">${n.cidr}</code>
+                                ${n.description ? `<br><small class="text-muted">${n.description}</small>` : ''}
+                            </div>
+                            <button class="btn btn-sm btn-outline-success" onclick="addNetwork('${groupId}', '${n.id}', '${n.name}')">
+                                <i class="bi bi-plus-lg"></i> Add
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        async function addNetwork(groupId, networkId, networkName) {
+            const alertEl = document.getElementById('manageNetworksAlert');
+            try {
+                const response = await fetch(`/api/v1/groups/${groupId}/networks`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ network_id: networkId })
+                });
+
+                if (response.ok) {
+                    alertEl.className = 'alert alert-success';
+                    alertEl.textContent = `Network "${networkName}" added successfully`;
+                    alertEl.classList.remove('d-none');
+                    await loadManageNetworksData(groupId);
+                    loadGroupNetworks(); // Refresh table badges
+                } else {
+                    const error = await response.json();
+                    alertEl.className = 'alert alert-danger';
+                    alertEl.textContent = error.message || 'Failed to add network';
+                    alertEl.classList.remove('d-none');
+                }
+            } catch (error) {
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = 'Connection error';
+                alertEl.classList.remove('d-none');
+            }
+        }
+
+        async function removeNetwork(groupId, networkId, networkName) {
+            const alertEl = document.getElementById('manageNetworksAlert');
+            try {
+                const response = await fetch(`/api/v1/groups/${groupId}/networks/${networkId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    alertEl.className = 'alert alert-success';
+                    alertEl.textContent = `Network "${networkName}" removed successfully`;
+                    alertEl.classList.remove('d-none');
+                    await loadManageNetworksData(groupId);
+                    loadGroupNetworks(); // Refresh table badges
+                } else {
+                    const error = await response.json();
+                    alertEl.className = 'alert alert-danger';
+                    alertEl.textContent = error.message || 'Failed to remove network';
+                    alertEl.classList.remove('d-none');
+                }
+            } catch (error) {
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = 'Connection error';
+                alertEl.classList.remove('d-none');
+            }
+        }
+
+        // Edit Group
+        async function editGroup(id) {
+            const modal = new bootstrap.Modal(document.getElementById('editGroupModal'));
+            document.getElementById('editGroupAlert').classList.add('d-none');
+
+            try {
+                const response = await fetch(`/api/v1/groups/${id}`);
+                if (!response.ok) throw new Error('Failed to load group');
+                const group = await response.json();
+
+                document.getElementById('editGroupId').value = group.id;
+                document.getElementById('editName').value = group.name;
+                document.getElementById('editDescription').value = group.description || '';
+
+                modal.show();
+            } catch (error) {
+                showAlert(error.message, 'danger');
+            }
+        }
+
+        async function updateGroup(event) {
+            event.preventDefault();
+            const alertEl = document.getElementById('editGroupAlert');
+            alertEl.classList.add('d-none');
+
+            const id = document.getElementById('editGroupId').value;
             const data = {
-                name: document.getElementById('newGroupName').value,
-                description: document.getElementById('newGroupDescription').value
+                name: document.getElementById('editName').value,
+                description: document.getElementById('editDescription').value || null
+            };
+
+            try {
+                const response = await fetch(`/api/v1/groups/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('editGroupModal')).hide();
+                    showAlert('Group updated successfully');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    const error = await response.json();
+                    alertEl.className = 'alert alert-danger';
+                    alertEl.textContent = error.message || 'Failed to update group';
+                    alertEl.classList.remove('d-none');
+                }
+            } catch (error) {
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = 'Connection error';
+                alertEl.classList.remove('d-none');
+            }
+        }
+
+        // Create Group
+        async function createGroup(event) {
+            event.preventDefault();
+            const alertEl = document.getElementById('createGroupAlert');
+            alertEl.classList.add('d-none');
+
+            const data = {
+                name: document.getElementById('createName').value,
+                description: document.getElementById('createDescription').value || null
             };
 
             try {
@@ -145,36 +684,84 @@
                 });
 
                 if (response.ok) {
-                    window.location.reload();
+                    bootstrap.Modal.getInstance(document.getElementById('createGroupModal')).hide();
+                    showAlert('Group created successfully');
+                    setTimeout(() => window.location.reload(), 1000);
                 } else {
                     const error = await response.json();
-                    alert(error.message || 'Failed to create group');
+                    alertEl.className = 'alert alert-danger';
+                    alertEl.textContent = error.message || 'Failed to create group';
+                    alertEl.classList.remove('d-none');
                 }
             } catch (error) {
-                alert('Connection error');
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = 'Connection error';
+                alertEl.classList.remove('d-none');
             }
         }
 
-        async function deleteGroup(id) {
-            if (!confirm('Are you sure you want to delete this group?')) return;
+        // Delete Group
+        function confirmDeleteGroup(id, name) {
+            document.getElementById('deleteGroupId').value = id;
+            document.getElementById('deleteGroupName').textContent = name;
+            new bootstrap.Modal(document.getElementById('deleteGroupModal')).show();
+        }
+
+        async function deleteGroup() {
+            const id = document.getElementById('deleteGroupId').value;
 
             try {
                 const response = await fetch(`/api/v1/groups/${id}`, { method: 'DELETE' });
+
+                bootstrap.Modal.getInstance(document.getElementById('deleteGroupModal')).hide();
+
                 if (response.ok) {
-                    window.location.reload();
+                    showAlert('Group deleted successfully');
+                    setTimeout(() => window.location.reload(), 1000);
                 } else {
                     const error = await response.json();
-                    alert(error.message || 'Failed to delete group');
+                    showAlert(error.message || 'Failed to delete group', 'danger');
                 }
             } catch (error) {
-                alert('Connection error');
+                showAlert('Connection error', 'danger');
             }
         }
 
-        function editGroup(id) {
-            // TODO: Implement edit group modal
-            alert('Edit group: ' + id);
+        // Load users for each group
+        async function loadGroupUsers() {
+            const badges = document.querySelectorAll('.user-badges');
+            for (const badge of badges) {
+                const groupId = badge.dataset.groupId;
+                try {
+                    const response = await fetch(`/api/v1/groups/${groupId}/users`);
+                    if (response.ok) {
+                        const users = await response.json();
+                        if (users && users.length > 0) {
+                            // Show max 3 users, then "+N more"
+                            const displayUsers = users.slice(0, 3);
+                            const remaining = users.length - 3;
+                            let html = displayUsers.map(u =>
+                                `<span class="badge bg-info me-1">${u.username}</span>`
+                            ).join('');
+                            if (remaining > 0) {
+                                html += `<span class="badge bg-secondary">+${remaining} more</span>`;
+                            }
+                            badge.innerHTML = html;
+                        } else {
+                            badge.innerHTML = '<span class="text-muted"><small>No users</small></span>';
+                        }
+                    }
+                } catch (error) {
+                    badge.innerHTML = '<span class="text-danger"><small>Error</small></span>';
+                }
+            }
         }
+
+        // Load networks and users on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGroupNetworks();
+            loadGroupUsers();
+        });
     </script>
 </body>
 </html>

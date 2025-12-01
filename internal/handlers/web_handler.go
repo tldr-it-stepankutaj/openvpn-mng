@@ -11,15 +11,19 @@ import (
 
 // WebHandler handles web page requests
 type WebHandler struct {
-	userService  *services.UserService
-	groupService *services.GroupService
+	userService      *services.UserService
+	groupService     *services.GroupService
+	networkService   *services.NetworkService
+	dashboardService *services.DashboardService
 }
 
 // NewWebHandler creates a new web handler
 func NewWebHandler() *WebHandler {
 	return &WebHandler{
-		userService:  services.NewUserService(),
-		groupService: services.NewGroupService(),
+		userService:      services.NewUserService(),
+		groupService:     services.NewGroupService(),
+		networkService:   services.NewNetworkService(),
+		dashboardService: services.NewDashboardService(),
 	}
 }
 
@@ -42,11 +46,29 @@ func (h *WebHandler) DashboardPage(c *gin.Context) {
 
 	user, _ := h.userService.GetByID(authUserID)
 
-	c.HTML(http.StatusOK, "dashboard.html", gin.H{
+	data := gin.H{
 		"title": "Dashboard - OpenVPN Manager",
 		"user":  user,
 		"role":  authUser.Role,
-	})
+	}
+
+	// Add stats for ADMIN role
+	if authUser.Role == models.RoleAdmin {
+		stats, err := h.dashboardService.GetAdminStats()
+		if err == nil {
+			data["stats"] = stats
+		}
+	}
+
+	// Add subordinate count for MANAGER role
+	if authUser.Role == models.RoleManager {
+		count, err := h.dashboardService.GetManagerSubordinateCount(authUserID.String())
+		if err == nil {
+			data["subordinateCount"] = count
+		}
+	}
+
+	c.HTML(http.StatusOK, "dashboard.html", data)
 }
 
 // UsersPage renders the users list page
@@ -127,6 +149,73 @@ func (h *WebHandler) ProfilePage(c *gin.Context) {
 	c.HTML(http.StatusOK, "profile.html", gin.H{
 		"title": "Profile - OpenVPN Manager",
 		"user":  user,
+		"role":  authUser.Role,
+	})
+}
+
+// NetworksPage renders the networks list page (ADMIN only)
+func (h *WebHandler) NetworksPage(c *gin.Context) {
+	authUser := middleware.GetAuthUser(c)
+
+	// Only ADMIN can access networks
+	if authUser.Role != models.RoleAdmin {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title":   "Access Denied - OpenVPN Manager",
+			"message": "You don't have permission to access this page",
+		})
+		return
+	}
+
+	networks, _, err := h.networkService.List(1, 100)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"title":   "Error - OpenVPN Manager",
+			"message": "Failed to load networks",
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "networks.html", gin.H{
+		"title":    "Networks - OpenVPN Manager",
+		"networks": networks,
+		"role":     authUser.Role,
+	})
+}
+
+// AuditPage renders the audit logs page (ADMIN only)
+func (h *WebHandler) AuditPage(c *gin.Context) {
+	authUser := middleware.GetAuthUser(c)
+
+	// Only ADMIN can access audit logs
+	if authUser.Role != models.RoleAdmin {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title":   "Access Denied - OpenVPN Manager",
+			"message": "You don't have permission to access this page",
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "audit.html", gin.H{
+		"title": "Audit Logs - OpenVPN Manager",
+		"role":  authUser.Role,
+	})
+}
+
+// SessionsPage renders the VPN sessions history page (ADMIN only)
+func (h *WebHandler) SessionsPage(c *gin.Context) {
+	authUser := middleware.GetAuthUser(c)
+
+	// Only ADMIN can access session history
+	if authUser.Role != models.RoleAdmin {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title":   "Access Denied - OpenVPN Manager",
+			"message": "You don't have permission to access this page",
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "sessions.html", gin.H{
+		"title": "VPN Session History - OpenVPN Manager",
 		"role":  authUser.Role,
 	})
 }

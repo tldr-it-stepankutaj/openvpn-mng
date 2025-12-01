@@ -42,6 +42,9 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 			protected.GET("/users", webHandler.UsersPage)
 			protected.GET("/users/:id", webHandler.UserDetailPage)
 			protected.GET("/groups", webHandler.GroupsPage)
+			protected.GET("/networks", webHandler.NetworksPage)
+			protected.GET("/audit", webHandler.AuditPage)
+			protected.GET("/sessions", webHandler.SessionsPage)
 			protected.GET("/profile", webHandler.ProfilePage)
 		}
 	}
@@ -72,11 +75,16 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 					users.PUT("/password", userHandler.UpdatePassword)
 
 					// CRUD endpoints with role-based access
-					users.GET("", userHandler.List)                                        // Access control in handler
-					users.POST("", middleware.RequireManagerOrAdmin(), userHandler.Create) // MANAGER can create subordinates
-					users.GET("/:id", userHandler.Get)                                     // Access control in handler
-					users.PUT("/:id", userHandler.Update)                                  // Access control in handler
-					users.DELETE("/:id", middleware.RequireAdmin(), userHandler.Delete)    // Only ADMIN can delete
+					users.GET("", userHandler.List)
+					users.POST("", middleware.RequireManagerOrAdmin(), userHandler.Create)
+					users.GET("/:id", userHandler.Get)
+					users.PUT("/:id", userHandler.Update)
+					users.DELETE("/:id", middleware.RequireAdmin(), userHandler.Delete)
+
+					// User groups management
+					users.GET("/:id/groups", userHandler.GetGroups)
+					users.POST("/:id/groups", middleware.RequireRole(models.RoleAdmin, models.RoleManager), userHandler.AddGroup)
+					users.DELETE("/:id/groups/:group_id", middleware.RequireRole(models.RoleAdmin, models.RoleManager), userHandler.RemoveGroup)
 				}
 
 				// Groups
@@ -90,6 +98,9 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 					groups.GET("/:id/users", groupHandler.GetUsers)
 					groups.POST("/:id/users", middleware.RequireRole(models.RoleAdmin, models.RoleManager), groupHandler.AddUser)
 					groups.DELETE("/:id/users/:user_id", middleware.RequireRole(models.RoleAdmin, models.RoleManager), groupHandler.RemoveUser)
+					groups.GET("/:id/networks", groupHandler.GetNetworks)
+					groups.POST("/:id/networks", middleware.RequireAdmin(), groupHandler.AddNetwork)
+					groups.DELETE("/:id/networks/:network_id", middleware.RequireAdmin(), groupHandler.RemoveNetwork)
 				}
 
 				// Networks (Admin only)

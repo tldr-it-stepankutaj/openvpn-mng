@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.title}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="bi bi-shield-lock me-2"></i>OpenVPN Manager
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/users">
+                            <i class="bi bi-people me-1"></i>Users
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/groups">
+                            <i class="bi bi-diagram-3 me-1"></i>Groups
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/networks">
+                            <i class="bi bi-hdd-network me-1"></i>Networks
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/audit">
+                            <i class="bi bi-journal-text me-1"></i>Audit
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/sessions">
+                            <i class="bi bi-clock-history me-1"></i>History
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i>Profile
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="/profile"><i class="bi bi-person me-2"></i>Profile</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="logout()"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1><i class="bi bi-clock-history me-2"></i>VPN Session History</h1>
+                    <div class="d-flex gap-2">
+                        <select class="form-select" id="filterStatus" style="width: auto;" onchange="applyFilters()">
+                            <option value="">All Sessions</option>
+                            <option value="active">Active Only</option>
+                            <option value="disconnected">Disconnected Only</option>
+                        </select>
+                        <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                            <i class="bi bi-x-lg"></i> Clear
+                        </button>
+                        <button class="btn btn-outline-primary" onclick="loadSessions()">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Sessions Summary -->
+        <div class="row mb-4" id="activeSessionsRow">
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="text-white-50 small">Active Sessions</div>
+                                <div class="fs-2 fw-bold" id="activeCount">-</div>
+                            </div>
+                            <i class="bi bi-wifi fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="text-white-50 small">Total Sessions</div>
+                                <div class="fs-2 fw-bold" id="totalCount">-</div>
+                            </div>
+                            <i class="bi bi-clock-history fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="text-white-50 small">Total Received</div>
+                                <div class="fs-2 fw-bold" id="totalReceived">-</div>
+                            </div>
+                            <i class="bi bi-download fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <div class="text-dark-50 small">Total Sent</div>
+                                <div class="fs-2 fw-bold" id="totalSent">-</div>
+                            </div>
+                            <i class="bi bi-upload fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="sessionsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>User</th>
+                                <th>VPN IP</th>
+                                <th>Client IP</th>
+                                <th>Connected</th>
+                                <th>Disconnected</th>
+                                <th>Duration</th>
+                                <th>Received</th>
+                                <th>Sent</th>
+                                <th>Status</th>
+                                <th class="text-end">View</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsTableBody">
+                            <tr>
+                                <td colspan="10" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav aria-label="Page navigation" class="mt-3">
+                    <ul class="pagination justify-content-center" id="pagination">
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Session Detail Modal -->
+    <div class="modal fade" id="viewSessionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Session Detail</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="viewSessionContent">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script>
+        let currentPage = 1;
+        const pageSize = 20;
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatDuration(start, end) {
+            const startDate = new Date(start);
+            const endDate = end ? new Date(end) : new Date();
+            const diffMs = endDate - startDate;
+
+            const hours = Math.floor(diffMs / (1000 * 60 * 60));
+            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${seconds}s`;
+            } else {
+                return `${seconds}s`;
+            }
+        }
+
+        function getDisconnectReasonBadge(reason) {
+            const badges = {
+                'USER_REQUEST': { class: 'bg-secondary', text: 'User Request' },
+                'TIMEOUT': { class: 'bg-warning text-dark', text: 'Timeout' },
+                'SERVER_SHUTDOWN': { class: 'bg-info', text: 'Server Shutdown' },
+                'ERROR': { class: 'bg-danger', text: 'Error' },
+                'ADMIN_ACTION': { class: 'bg-dark', text: 'Admin Action' }
+            };
+            return badges[reason] || { class: 'bg-secondary', text: reason || 'Unknown' };
+        }
+
+        async function loadSessions(page = 1) {
+            currentPage = page;
+            const status = document.getElementById('filterStatus').value;
+
+            let url = `/api/v1/vpn/sessions?page=${page}&page_size=${pageSize}`;
+
+            // Load active count first
+            loadStats();
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to load sessions');
+                const data = await response.json();
+
+                // Filter based on status if needed
+                let sessions = data.sessions || [];
+                if (status === 'active') {
+                    sessions = sessions.filter(s => !s.disconnected_at);
+                } else if (status === 'disconnected') {
+                    sessions = sessions.filter(s => s.disconnected_at);
+                }
+
+                renderSessions({ ...data, sessions });
+            } catch (error) {
+                document.getElementById('sessionsTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="10" class="text-center text-danger py-4">
+                            <i class="bi bi-exclamation-triangle me-2"></i>${error.message}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        async function loadStats() {
+            try {
+                // Load active sessions count
+                const activeResponse = await fetch('/api/v1/vpn/sessions/active');
+                if (activeResponse.ok) {
+                    const activeData = await activeResponse.json();
+                    document.getElementById('activeCount').textContent = activeData.sessions ? activeData.sessions.length : 0;
+                }
+
+                // Load stats
+                const statsResponse = await fetch('/api/v1/vpn/stats');
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    document.getElementById('totalCount').textContent = stats.total_sessions || 0;
+                    document.getElementById('totalReceived').textContent = formatBytes(stats.total_bytes_received || 0);
+                    document.getElementById('totalSent').textContent = formatBytes(stats.total_bytes_sent || 0);
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        function renderSessions(data) {
+            const tbody = document.getElementById('sessionsTableBody');
+
+            if (!data.sessions || data.sessions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            No sessions found
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            tbody.innerHTML = data.sessions.map(session => {
+                const isActive = !session.disconnected_at;
+                return `
+                    <tr>
+                        <td>
+                            <strong>${session.user ? session.user.username : '-'}</strong>
+                            ${session.user ? '<br><small class="text-muted">' + session.user.first_name + ' ' + session.user.last_name + '</small>' : ''}
+                        </td>
+                        <td><code>${session.vpn_ip}</code></td>
+                        <td><code>${session.client_ip || '-'}</code></td>
+                        <td><small>${new Date(session.connected_at).toLocaleString()}</small></td>
+                        <td>
+                            ${session.disconnected_at
+                                ? '<small>' + new Date(session.disconnected_at).toLocaleString() + '</small>'
+                                : '<span class="text-muted">-</span>'}
+                        </td>
+                        <td>${formatDuration(session.connected_at, session.disconnected_at)}</td>
+                        <td><span class="text-success">${formatBytes(session.bytes_received)}</span></td>
+                        <td><span class="text-primary">${formatBytes(session.bytes_sent)}</span></td>
+                        <td>
+                            ${isActive
+                                ? '<span class="badge bg-success"><i class="bi bi-wifi me-1"></i>Active</span>'
+                                : '<span class="badge ' + getDisconnectReasonBadge(session.disconnect_reason).class + '">' +
+                                  getDisconnectReasonBadge(session.disconnect_reason).text + '</span>'}
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-info" onclick="viewSession('${session.id}')" title="View Details">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            renderPagination(data.total, data.page, data.total_pages);
+        }
+
+        function renderPagination(total, currentPage, totalPages) {
+            const pagination = document.getElementById('pagination');
+
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            html += `
+                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadSessions(${currentPage - 1}); return false;">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            `;
+
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            if (startPage > 1) {
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadSessions(1); return false;">1</a></li>`;
+                if (startPage > 2) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `
+                    <li class="page-item ${i === currentPage ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="loadSessions(${i}); return false;">${i}</a>
+                    </li>
+                `;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadSessions(${totalPages}); return false;">${totalPages}</a></li>`;
+            }
+
+            html += `
+                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadSessions(${currentPage + 1}); return false;">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            `;
+
+            pagination.innerHTML = html;
+        }
+
+        async function viewSession(id) {
+            const modal = new bootstrap.Modal(document.getElementById('viewSessionModal'));
+            modal.show();
+
+            document.getElementById('viewSessionContent').innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/v1/vpn/sessions?page=1&page_size=1000`);
+                if (!response.ok) throw new Error('Failed to load session');
+                const data = await response.json();
+                const session = data.sessions.find(s => s.id === id);
+                if (!session) throw new Error('Session not found');
+                renderSessionDetail(session);
+            } catch (error) {
+                document.getElementById('viewSessionContent').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle me-2"></i>${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function renderSessionDetail(session) {
+            const isActive = !session.disconnected_at;
+
+            document.getElementById('viewSessionContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">User Information</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <th width="40%">Username:</th>
+                                <td>${session.user ? session.user.username : '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>Name:</th>
+                                <td>${session.user ? session.user.first_name + ' ' + session.user.last_name : '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>Email:</th>
+                                <td>${session.user ? session.user.email : '-'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Connection Information</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <th width="40%">VPN IP:</th>
+                                <td><code>${session.vpn_ip}</code></td>
+                            </tr>
+                            <tr>
+                                <th>Client IP:</th>
+                                <td><code>${session.client_ip || '-'}</code></td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    ${isActive
+                                        ? '<span class="badge bg-success"><i class="bi bi-wifi me-1"></i>Active</span>'
+                                        : '<span class="badge ' + getDisconnectReasonBadge(session.disconnect_reason).class + '">' +
+                                          getDisconnectReasonBadge(session.disconnect_reason).text + '</span>'}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Time Information</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <th width="40%">Connected:</th>
+                                <td>${new Date(session.connected_at).toLocaleString()}</td>
+                            </tr>
+                            <tr>
+                                <th>Disconnected:</th>
+                                <td>${session.disconnected_at ? new Date(session.disconnected_at).toLocaleString() : '<span class="text-success">Still connected</span>'}</td>
+                            </tr>
+                            <tr>
+                                <th>Duration:</th>
+                                <td><strong>${formatDuration(session.connected_at, session.disconnected_at)}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted mb-3">Traffic Statistics</h6>
+                        <table class="table table-sm table-borderless">
+                            <tr>
+                                <th width="40%">Received:</th>
+                                <td><span class="text-success fs-5">${formatBytes(session.bytes_received)}</span></td>
+                            </tr>
+                            <tr>
+                                <th>Sent:</th>
+                                <td><span class="text-primary fs-5">${formatBytes(session.bytes_sent)}</span></td>
+                            </tr>
+                            <tr>
+                                <th>Total:</th>
+                                <td><strong class="fs-5">${formatBytes(session.bytes_received + session.bytes_sent)}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-12">
+                        <small class="text-muted">Session ID: <code>${session.id}</code></small>
+                    </div>
+                </div>
+            `;
+        }
+
+        function applyFilters() {
+            loadSessions(1);
+        }
+
+        function clearFilters() {
+            document.getElementById('filterStatus').value = '';
+            loadSessions(1);
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSessions();
+        });
+    </script>
+</body>
+</html>

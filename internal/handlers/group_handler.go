@@ -494,3 +494,153 @@ func (h *GroupHandler) GetUsers(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dto.ToUserResponseList(filteredUsers))
 }
+
+// GetNetworks godoc
+// @Summary Get group networks
+// @Description Get networks assigned to a group
+// @Tags groups
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Group ID"
+// @Success 200 {array} dto.NetworkResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Router /api/v1/groups/{id}/networks [get]
+func (h *GroupHandler) GetNetworks(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Bad Request",
+			Message: "Invalid group ID",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	networks, err := h.groupService.GetGroupNetworks(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "Internal Server Error",
+			Message: err.Error(),
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.ToNetworkResponseList(networks))
+}
+
+// AddNetwork godoc
+// @Summary Add network to group
+// @Description Add a network to a group (Admin only)
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Group ID"
+// @Param request body dto.AddNetworkToGroupRequest true "Network data"
+// @Success 200 {object} dto.SuccessResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Failure 404 {object} dto.ErrorResponse
+// @Router /api/v1/groups/{id}/networks [post]
+func (h *GroupHandler) AddNetwork(c *gin.Context) {
+	idStr := c.Param("id")
+	groupID, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Bad Request",
+			Message: "Invalid group ID",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	var req dto.AddNetworkToGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Bad Request",
+			Message: err.Error(),
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	authUserID := middleware.GetAuthUserID(c)
+
+	if err := h.groupService.AddNetworkToGroup(groupID, req.NetworkID, authUserID); err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "Internal Server Error",
+			Message: err.Error(),
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	h.auditLogger.LogCreate(c, "network_group", groupID, map[string]interface{}{
+		"group_id":   groupID,
+		"network_id": req.NetworkID,
+	})
+
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Message: "Network added to group successfully",
+	})
+}
+
+// RemoveNetwork godoc
+// @Summary Remove network from group
+// @Description Remove a network from a group (Admin only)
+// @Tags groups
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Group ID"
+// @Param network_id path string true "Network ID"
+// @Success 200 {object} dto.SuccessResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Failure 403 {object} dto.ErrorResponse
+// @Router /api/v1/groups/{id}/networks/{network_id} [delete]
+func (h *GroupHandler) RemoveNetwork(c *gin.Context) {
+	groupIDStr := c.Param("id")
+	groupID, err := uuid.Parse(groupIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Bad Request",
+			Message: "Invalid group ID",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	networkIDStr := c.Param("network_id")
+	networkID, err := uuid.Parse(networkIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "Bad Request",
+			Message: "Invalid network ID",
+			Code:    http.StatusBadRequest,
+		})
+		return
+	}
+
+	if err := h.groupService.RemoveNetworkFromGroup(groupID, networkID); err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "Internal Server Error",
+			Message: err.Error(),
+			Code:    http.StatusInternalServerError,
+		})
+		return
+	}
+
+	h.auditLogger.LogDelete(c, "network_group", groupID, map[string]interface{}{
+		"group_id":   groupID,
+		"network_id": networkID,
+	})
+
+	c.JSON(http.StatusOK, dto.SuccessResponse{
+		Message: "Network removed from group successfully",
+	})
+}

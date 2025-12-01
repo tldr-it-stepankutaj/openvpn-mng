@@ -167,7 +167,7 @@ dockers_v2:
   - id: multi-arch
     ids:
       - openvpn-mng
-    dockerfile: Dockerfile
+    dockerfile: Dockerfile.goreleaser
     images:
       - "tldrit/openvpn-mng"
     tags:

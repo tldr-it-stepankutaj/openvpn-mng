@@ -31,11 +31,11 @@ go.work.sum
 # Editor/IDE
 .idea/
 .vscode/
-.claude/
+.flow/
 config.yaml
 
 *.log
 
 dist/
 
-blog.md
+marketing/

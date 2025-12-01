@@ -169,7 +169,7 @@ dockers_v2:
       - openvpn-mng
     dockerfile: Dockerfile
     images:
-      - "tldr/openvpn-mng"
+      - "tldrit/openvpn-mng"
     tags:
       - "{{ .Version }}"
       - "latest"
@@ -215,7 +215,7 @@ release:
     sudo rpm -i openvpn-mng_{{ .Version }}_linux_amd64.rpm
 
     # Docker
-    docker pull tldr/openvpn-mng:{{ .Version }}
+    docker pull tldrit/openvpn-mng:{{ .Version }}
     ```
 
     See [Installation Guide](https://github.com/tldr-it-stepankutaj/openvpn-mng/blob/main/help/install.md) for detailed instructions.
@@ -225,4 +225,4 @@ release:
 
     **Full Changelog**: https://github.com/tldr-it-stepankutaj/openvpn-mng/compare/{{ .PreviousTag }}...{{ .Tag }}
 
-    **Docker Hub**: https://hub.docker.com/r/tldr/openvpn-mng
+    **Docker Hub**: https://hub.docker.com/r/tldrit/openvpn-mng

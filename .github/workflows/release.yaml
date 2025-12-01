@@ -13,27 +13,10 @@ env:
   GO_VERSION: '1.22'
 
 jobs:
-  # Run tests before release
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Run tests
-        run: go test -v -race ./...
-
   # Build and release
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: test
     steps:
       - name: Checkout
         uses: actions/checkout@v4

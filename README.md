@@ -48,7 +48,7 @@ sudo dnf install ./openvpn-mng_${VERSION}_linux_amd64.rpm
 ### Docker
 
 ```bash
-docker pull tldr/openvpn-mng:latest
+docker pull tldrit/openvpn-mng:latest
 ```
 
 For detailed installation instructions, see **[Installation Guide](help/install.md)**.
@@ -239,5 +239,5 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Links
 
 - **GitHub**: https://github.com/tldr-it-stepankutaj/openvpn-mng
-- **Docker Hub**: https://hub.docker.com/r/tldr/openvpn-mng
+- **Docker Hub**: https://hub.docker.com/r/tldrit/openvpn-mng
 - **Releases**: https://github.com/tldr-it-stepankutaj/openvpn-mng/releases

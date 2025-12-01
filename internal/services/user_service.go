@@ -11,8 +11,7 @@ import (
 )
 
 var (
-	ErrUserExists   = errors.New("user already exists")
-	ErrAccessDenied = errors.New("access denied")
+	ErrUserExists = errors.New("user already exists")
 )
 
 // UserService provides user management services
@@ -183,21 +182,27 @@ func (s *UserService) Delete(id uuid.UUID) error {
 }
 
 // List lists users with pagination
-func (s *UserService) List(page, pageSize int, role models.Role, managerID *uuid.UUID) ([]models.User, int64, error) {
+func (s *UserService) List(page, pageSize int, role models.Role, userID *uuid.UUID) ([]models.User, int64, error) {
 	var users []models.User
 	var total int64
 
 	query := database.GetDB().Model(&models.User{}).Preload("Manager")
 
 	// Filter based on role
-	if role == models.RoleManager && managerID != nil {
-		// Managers can only see users they manage
-		query = query.Where("manager_id = ?", managerID)
-	} else if role == models.RoleUser {
-		// Users shouldn't be able to list other users via this method
-		return nil, 0, ErrAccessDenied
+	switch role {
+	case models.RoleAdmin:
+		// Admins can see all users
+	case models.RoleManager:
+		// Managers can only see users they manage (their subordinates)
+		if userID != nil {
+			query = query.Where("manager_id = ?", userID)
+		}
+	case models.RoleUser:
+		// Users can only see themselves
+		if userID != nil {
+			query = query.Where("id = ?", userID)
+		}
 	}
-	// Admins can see all users
 
 	// Count total
 	query.Count(&total)

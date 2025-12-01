@@ -28,7 +28,7 @@ func NewUserHandler() *UserHandler {
 
 // Create godoc
 // @Summary Create user
-// @Description Create a new user (Admin only)
+// @Description Create a new user (Admin or Manager). Managers can only create users assigned to themselves.
 // @Tags users
 // @Accept json
 // @Produce json
@@ -50,8 +50,25 @@ func (h *UserHandler) Create(c *gin.Context) {
 		return
 	}
 
-	createdBy := middleware.GetAuthUserID(c)
-	user, err := h.userService.Create(&req, createdBy)
+	authUser := middleware.GetAuthUser(c)
+	authUserID := middleware.GetAuthUserID(c)
+
+	// MANAGER restrictions
+	if authUser.Role == models.RoleManager {
+		// Manager must set themselves as the manager of new user
+		req.ManagerID = &authUserID
+		// Manager cannot create ADMIN users
+		if req.Role == models.RoleAdmin {
+			c.JSON(http.StatusForbidden, dto.ErrorResponse{
+				Error:   "Forbidden",
+				Message: "Managers cannot create admin users",
+				Code:    http.StatusForbidden,
+			})
+			return
+		}
+	}
+
+	user, err := h.userService.Create(&req, authUserID)
 	if err != nil {
 		if err == services.ErrUserExists {
 			c.JSON(http.StatusConflict, dto.ErrorResponse{
@@ -139,7 +156,7 @@ func (h *UserHandler) Get(c *gin.Context) {
 
 // Update godoc
 // @Summary Update user
-// @Description Update a user
+// @Description Update a user. Admin can update anyone. Manager can update their subordinates. User cannot use this endpoint.
 // @Tags users
 // @Accept json
 // @Produce json
@@ -189,11 +206,22 @@ func (h *UserHandler) Update(c *gin.Context) {
 	authUser := middleware.GetAuthUser(c)
 	authUserID := middleware.GetAuthUserID(c)
 
+	// USER role cannot update other users (they should use /profile endpoint for themselves)
+	if authUser.Role == models.RoleUser {
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{
+			Error:   "Forbidden",
+			Message: "Access denied. Use /users/profile to update your own profile.",
+			Code:    http.StatusForbidden,
+		})
+		return
+	}
+
+	// MANAGER can only update their subordinates
 	if authUser.Role == models.RoleManager {
 		if oldUser.ManagerID == nil || *oldUser.ManagerID != authUserID {
 			c.JSON(http.StatusForbidden, dto.ErrorResponse{
 				Error:   "Forbidden",
-				Message: "Access denied",
+				Message: "Access denied. You can only update your subordinates.",
 				Code:    http.StatusForbidden,
 			})
 			return
@@ -203,6 +231,15 @@ func (h *UserHandler) Update(c *gin.Context) {
 			c.JSON(http.StatusForbidden, dto.ErrorResponse{
 				Error:   "Forbidden",
 				Message: "Cannot assign admin role",
+				Code:    http.StatusForbidden,
+			})
+			return
+		}
+		// Managers cannot change the manager_id to someone else
+		if req.ManagerID != nil && *req.ManagerID != authUserID {
+			c.JSON(http.StatusForbidden, dto.ErrorResponse{
+				Error:   "Forbidden",
+				Message: "Cannot reassign user to another manager",
 				Code:    http.StatusForbidden,
 			})
 			return
@@ -370,7 +407,7 @@ func (h *UserHandler) Delete(c *gin.Context) {
 
 // List godoc
 // @Summary List users
-// @Description List users with pagination
+// @Description List users with pagination. Admin sees all users. Manager sees only subordinates. User sees only themselves.
 // @Tags users
 // @Produce json
 // @Security BearerAuth
@@ -396,14 +433,6 @@ func (h *UserHandler) List(c *gin.Context) {
 
 	users, total, err := h.userService.List(page, pageSize, authUser.Role, &authUserID)
 	if err != nil {
-		if err == services.ErrAccessDenied {
-			c.JSON(http.StatusForbidden, dto.ErrorResponse{
-				Error:   "Forbidden",
-				Message: "Access denied",
-				Code:    http.StatusForbidden,
-			})
-			return
-		}
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error:   "Internal Server Error",
 			Message: err.Error(),

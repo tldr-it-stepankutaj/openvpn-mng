@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/dto"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/middleware"
+	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/models"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/services"
 )
 
@@ -272,7 +273,7 @@ func (h *GroupHandler) List(c *gin.Context) {
 
 // AddUser godoc
 // @Summary Add user to group
-// @Description Add a user to a group (Admin only)
+// @Description Add a user to a group. Admin can add anyone. Manager can only add their subordinates.
 // @Tags groups
 // @Accept json
 // @Produce json
@@ -307,8 +308,32 @@ func (h *GroupHandler) AddUser(c *gin.Context) {
 		return
 	}
 
-	createdBy := middleware.GetAuthUserID(c)
-	if err := h.groupService.AddUserToGroup(groupID, req.UserID, createdBy); err != nil {
+	authUser := middleware.GetAuthUser(c)
+	authUserID := middleware.GetAuthUserID(c)
+
+	// MANAGER can only add their subordinates to groups
+	if authUser.Role == models.RoleManager {
+		userService := services.NewUserService()
+		targetUser, err := userService.GetByID(req.UserID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, dto.ErrorResponse{
+				Error:   "Not Found",
+				Message: "User not found",
+				Code:    http.StatusNotFound,
+			})
+			return
+		}
+		if targetUser.ManagerID == nil || *targetUser.ManagerID != authUserID {
+			c.JSON(http.StatusForbidden, dto.ErrorResponse{
+				Error:   "Forbidden",
+				Message: "You can only add your subordinates to groups",
+				Code:    http.StatusForbidden,
+			})
+			return
+		}
+	}
+
+	if err := h.groupService.AddUserToGroup(groupID, req.UserID, authUserID); err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error:   "Internal Server Error",
 			Message: err.Error(),
@@ -329,7 +354,7 @@ func (h *GroupHandler) AddUser(c *gin.Context) {
 
 // RemoveUser godoc
 // @Summary Remove user from group
-// @Description Remove a user from a group (Admin only)
+// @Description Remove a user from a group. Admin can remove anyone. Manager can only remove their subordinates.
 // @Tags groups
 // @Produce json
 // @Security BearerAuth
@@ -363,6 +388,31 @@ func (h *GroupHandler) RemoveUser(c *gin.Context) {
 		return
 	}
 
+	authUser := middleware.GetAuthUser(c)
+	authUserID := middleware.GetAuthUserID(c)
+
+	// MANAGER can only remove their subordinates from groups
+	if authUser.Role == models.RoleManager {
+		userService := services.NewUserService()
+		targetUser, err := userService.GetByID(userID)
+		if err != nil {
+			c.JSON(http.StatusNotFound, dto.ErrorResponse{
+				Error:   "Not Found",
+				Message: "User not found",
+				Code:    http.StatusNotFound,
+			})
+			return
+		}
+		if targetUser.ManagerID == nil || *targetUser.ManagerID != authUserID {
+			c.JSON(http.StatusForbidden, dto.ErrorResponse{
+				Error:   "Forbidden",
+				Message: "You can only remove your subordinates from groups",
+				Code:    http.StatusForbidden,
+			})
+			return
+		}
+	}
+
 	if err := h.groupService.RemoveUserFromGroup(groupID, userID); err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error:   "Internal Server Error",
@@ -384,7 +434,7 @@ func (h *GroupHandler) RemoveUser(c *gin.Context) {
 
 // GetUsers godoc
 // @Summary Get group users
-// @Description Get all users in a group
+// @Description Get users in a group. Admin sees all. Manager sees only subordinates in the group. User sees only themselves if member.
 // @Tags groups
 // @Produce json
 // @Security BearerAuth
@@ -416,5 +466,31 @@ func (h *GroupHandler) GetUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, dto.ToUserResponseList(users))
+	authUser := middleware.GetAuthUser(c)
+	authUserID := middleware.GetAuthUserID(c)
+
+	// Filter users based on role
+	var filteredUsers []models.User
+	switch authUser.Role {
+	case models.RoleAdmin:
+		// Admin sees all users in the group
+		filteredUsers = users
+	case models.RoleManager:
+		// Manager sees only their subordinates in the group
+		for _, u := range users {
+			if u.ManagerID != nil && *u.ManagerID == authUserID {
+				filteredUsers = append(filteredUsers, u)
+			}
+		}
+	case models.RoleUser:
+		// User sees only themselves if they are a member
+		for _, u := range users {
+			if u.ID == authUserID {
+				filteredUsers = append(filteredUsers, u)
+				break
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.ToUserResponseList(filteredUsers))
 }

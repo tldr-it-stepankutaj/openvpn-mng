@@ -22,6 +22,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 	authHandler := handlers.NewAuthHandler(&cfg.Auth)
 	userHandler := handlers.NewUserHandler()
 	groupHandler := handlers.NewGroupHandler()
+	networkHandler := handlers.NewNetworkHandler()
 	webHandler := handlers.NewWebHandler()
 
 	// Web routes (HTML pages)
@@ -64,13 +65,16 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 				// Users
 				users := protected.Group("/users")
 				{
-					users.GET("", middleware.RequireManagerOrAdmin(), userHandler.List)
-					users.POST("", middleware.RequireAdmin(), userHandler.Create)
-					users.GET("/:id", userHandler.Get)
-					users.PUT("/:id", middleware.RequireManagerOrAdmin(), userHandler.Update)
-					users.DELETE("/:id", middleware.RequireAdmin(), userHandler.Delete)
+					// Profile endpoints (must be before /:id to avoid conflict)
 					users.PUT("/profile", userHandler.UpdateProfile)
 					users.PUT("/password", userHandler.UpdatePassword)
+
+					// CRUD endpoints with role-based access
+					users.GET("", userHandler.List)                                        // Access control in handler
+					users.POST("", middleware.RequireManagerOrAdmin(), userHandler.Create) // MANAGER can create subordinates
+					users.GET("/:id", userHandler.Get)                                     // Access control in handler
+					users.PUT("/:id", userHandler.Update)                                  // Access control in handler
+					users.DELETE("/:id", middleware.RequireAdmin(), userHandler.Delete)    // Only ADMIN can delete
 				}
 
 				// Groups
@@ -84,6 +88,20 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 					groups.GET("/:id/users", groupHandler.GetUsers)
 					groups.POST("/:id/users", middleware.RequireRole(models.RoleAdmin, models.RoleManager), groupHandler.AddUser)
 					groups.DELETE("/:id/users/:user_id", middleware.RequireRole(models.RoleAdmin, models.RoleManager), groupHandler.RemoveUser)
+				}
+
+				// Networks (Admin only)
+				networks := protected.Group("/networks")
+				networks.Use(middleware.RequireAdmin())
+				{
+					networks.GET("", networkHandler.List)
+					networks.POST("", networkHandler.Create)
+					networks.GET("/:id", networkHandler.Get)
+					networks.PUT("/:id", networkHandler.Update)
+					networks.DELETE("/:id", networkHandler.Delete)
+					networks.GET("/:id/groups", networkHandler.GetGroups)
+					networks.POST("/:id/groups", networkHandler.AddGroup)
+					networks.DELETE("/:id/groups/:group_id", networkHandler.RemoveGroup)
 				}
 			}
 		}

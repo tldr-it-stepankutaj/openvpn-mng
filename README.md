@@ -1,15 +1,16 @@
 # OpenVPN Manager
 
-A web-based management system for OpenVPN users, groups, and access control. Built with Go, Gin framework, and GORM ORM.
+A web-based management system for OpenVPN users, groups, networks, and access control. Built with Go, Gin framework, and GORM ORM.
 
 ## Features
 
 - **User Management**: Create, update, delete users with role-based access control
 - **Group Management**: Organize users into groups (IT, HR, Finance, etc.)
+- **Network Management**: Define network segments (IP/CIDR) and assign them to groups
 - **Role-Based Access Control (RBAC)**:
   - `USER` - Can only view and edit their own profile
-  - `MANAGER` - Can manage users assigned to them
-  - `ADMIN` - Full access to all resources
+  - `MANAGER` - Can create and manage users assigned to them
+  - `ADMIN` - Full access to all resources including networks
 - **Manager Hierarchy**: Users can be assigned to a manager for hierarchical access control
 - **Audit Logging**: Track all operations (create, read, update, delete, login, logout)
 - **REST API**: Full-featured API with Swagger documentation
@@ -17,6 +18,7 @@ A web-based management system for OpenVPN users, groups, and access control. Bui
 - **Database Support**: PostgreSQL and MySQL support via GORM
 - **JWT Authentication**: Secure token-based authentication
 - **IP Filtering**: Restrict Swagger documentation access by IP/CIDR ranges
+- **Flexible Logging**: Configurable output (stdout/file), format (text/JSON), and log levels
 
 ## Requirements
 
@@ -107,6 +109,12 @@ auth:
   jwt_secret: "your-super-secret-jwt-key-change-in-production"
   token_expiry: 24     # JWT token expiry in hours
   session_expiry: 8    # Session expiry in hours
+
+logging:
+  output: "stdout"     # "stdout" (default), "file", or "both"
+  path: ""             # Directory for log files (empty = current directory)
+  format: "text"       # "text" (default) or "json"
+  level: "info"        # "debug", "info", "warn", "error"
 ```
 
 ### IP Filtering for Swagger
@@ -119,6 +127,51 @@ The `swagger_allowed_ips` setting controls which IP addresses can access the Swa
 - `172.16.0.0/16` - Large subnet
 - `0.0.0.0/0` - Allow all IPv4 addresses
 - `::/0` - Allow all IPv6 addresses
+
+### Logging Configuration
+
+The `logging` section controls application logging behavior:
+
+#### Output Options
+
+| Value | Description |
+|-------|-------------|
+| `stdout` | Logs to standard output only (default, recommended for Kubernetes/Docker) |
+| `file` | Logs to file only (creates `openvpn-mng-YYYY-MM-DD.log`) |
+| `both` | Logs to both stdout and file |
+
+#### Format Options
+
+| Value | Description |
+|-------|-------------|
+| `text` | Human-readable format (default) |
+| `json` | JSON format for machine parsing (recommended for log aggregators) |
+
+#### Log Levels
+
+| Level | Description |
+|-------|-------------|
+| `debug` | All messages including SQL queries and detailed migration info |
+| `info` | Standard operational messages (default) |
+| `warn` | Warnings and errors only |
+| `error` | Errors only |
+
+#### Example Log Output
+
+**Text format:**
+```
+time=2025-12-01T07:54:09.499+01:00 level=INFO msg="OpenVPN Manager starting" version=1.0.0
+time=2025-12-01T07:54:09.509+01:00 level=INFO msg="Connected to database" type=postgres host=localhost port=5432
+time=2025-12-01T07:54:15.000+01:00 level=INFO msg="HTTP request" status=200 latency=515.667µs client_ip=127.0.0.1 method=GET path=/swagger/index.html
+time=2025-12-01T07:57:55.000+01:00 level=WARN msg="HTTP request" status=401 latency=91.5µs client_ip=127.0.0.1 method=GET path=/api/v1/auth/me
+```
+
+**JSON format:**
+```json
+{"time":"2025-12-01T07:55:19.746321+01:00","level":"INFO","msg":"OpenVPN Manager starting","version":"1.0.0"}
+{"time":"2025-12-01T07:55:19.755857+01:00","level":"INFO","msg":"Connected to database","type":"postgres","host":"localhost","port":5432}
+{"time":"2025-12-01T07:55:30.000+01:00","level":"INFO","msg":"HTTP request","status":200,"latency":"515.667µs","client_ip":"127.0.0.1","method":"GET","path":"/swagger/index.html"}
+```
 
 ## Building
 
@@ -173,6 +226,19 @@ On first run, a default admin user is created:
 
 **Important:** Change the default password immediately after first login!
 
+## Docker / Kubernetes Deployment
+
+For containerized deployments, use these recommended settings:
+
+```yaml
+logging:
+  output: "stdout"    # Let the container runtime collect logs
+  format: "json"      # Structured logs for log aggregators (Fluentd, Loki, ELK)
+  level: "info"
+```
+
+Environment variables can override config file settings if needed.
+
 ## API Endpoints
 
 ### Authentication
@@ -187,13 +253,18 @@ On first run, a default admin user is created:
 
 | Method | Endpoint | Description | Required Role |
 |--------|----------|-------------|---------------|
-| GET | `/api/v1/users` | List all users | MANAGER, ADMIN |
-| POST | `/api/v1/users` | Create user | ADMIN |
-| GET | `/api/v1/users/:id` | Get user details | Any (own) / MANAGER, ADMIN |
-| PUT | `/api/v1/users/:id` | Update user | MANAGER, ADMIN |
+| GET | `/api/v1/users` | List users (filtered by role) | Any |
+| POST | `/api/v1/users` | Create user | MANAGER, ADMIN |
+| GET | `/api/v1/users/:id` | Get user details | Own / Subordinates / ADMIN |
+| PUT | `/api/v1/users/:id` | Update user | Subordinates / ADMIN |
 | DELETE | `/api/v1/users/:id` | Delete user | ADMIN |
 | PUT | `/api/v1/users/profile` | Update own profile | Any |
 | PUT | `/api/v1/users/password` | Change own password | Any |
+
+**Note:**
+- `USER` role can only see themselves in the list
+- `MANAGER` role sees only their subordinates
+- `ADMIN` role sees all users
 
 ### Groups
 
@@ -204,9 +275,27 @@ On first run, a default admin user is created:
 | GET | `/api/v1/groups/:id` | Get group details | Any |
 | PUT | `/api/v1/groups/:id` | Update group | ADMIN |
 | DELETE | `/api/v1/groups/:id` | Delete group | ADMIN |
-| GET | `/api/v1/groups/:id/users` | Get group members | Any |
+| GET | `/api/v1/groups/:id/users` | Get group members (filtered) | Any |
 | POST | `/api/v1/groups/:id/users` | Add user to group | MANAGER, ADMIN |
 | DELETE | `/api/v1/groups/:id/users/:user_id` | Remove user from group | MANAGER, ADMIN |
+
+### Networks
+
+| Method | Endpoint | Description | Required Role |
+|--------|----------|-------------|---------------|
+| GET | `/api/v1/networks` | List all networks | ADMIN |
+| POST | `/api/v1/networks` | Create network | ADMIN |
+| GET | `/api/v1/networks/:id` | Get network details | ADMIN |
+| PUT | `/api/v1/networks/:id` | Update network | ADMIN |
+| DELETE | `/api/v1/networks/:id` | Delete network | ADMIN |
+| GET | `/api/v1/networks/:id/groups` | Get groups assigned to network | ADMIN |
+| POST | `/api/v1/networks/:id/groups` | Add group to network | ADMIN |
+| DELETE | `/api/v1/networks/:id/groups/:group_id` | Remove group from network | ADMIN |
+
+**Network CIDR Examples:**
+- `192.168.1.0/24` - Subnet (192.168.1.0 - 192.168.1.255)
+- `10.0.0.1/32` - Single IP address
+- `10.0.0.1` - Single IP (automatically converted to /32)
 
 ### Swagger Documentation
 
@@ -230,43 +319,50 @@ Access Swagger UI at: `http://localhost:8080/swagger/index.html`
 openvpn-mng/
 ├── cmd/
 │   └── server/
-│       └── main.go           # Application entry point
+│       └── main.go              # Application entry point
 ├── internal/
 │   ├── config/
-│   │   └── config.go         # Configuration loading
+│   │   └── config.go            # Configuration loading
 │   ├── database/
-│   │   └── database.go       # Database initialization
+│   │   └── database.go          # Database initialization
 │   ├── dto/
-│   │   ├── auth.go           # Auth DTOs
-│   │   ├── audit.go          # Audit DTOs
-│   │   ├── group.go          # Group DTOs
-│   │   └── user.go           # User DTOs
+│   │   ├── auth.go              # Auth DTOs
+│   │   ├── audit.go             # Audit DTOs
+│   │   ├── group.go             # Group DTOs
+│   │   ├── network.go           # Network DTOs
+│   │   └── user.go              # User DTOs
 │   ├── handlers/
-│   │   ├── auth_handler.go   # Auth endpoints
-│   │   ├── group_handler.go  # Group endpoints
-│   │   ├── user_handler.go   # User endpoints
-│   │   └── web_handler.go    # HTML page handlers
+│   │   ├── auth_handler.go      # Auth endpoints
+│   │   ├── group_handler.go     # Group endpoints
+│   │   ├── network_handler.go   # Network endpoints
+│   │   ├── user_handler.go      # User endpoints
+│   │   └── web_handler.go       # HTML page handlers
+│   ├── logger/
+│   │   ├── logger.go            # Application logger
+│   │   └── gin.go               # Gin HTTP request logger
 │   ├── middleware/
-│   │   ├── auth.go           # JWT authentication
-│   │   ├── audit.go          # Audit logging
-│   │   └── ip_filter.go      # IP-based access control
+│   │   ├── auth.go              # JWT authentication
+│   │   ├── audit.go             # Audit logging
+│   │   └── ip_filter.go         # IP-based access control
 │   ├── models/
-│   │   ├── audit.go          # Audit log model
-│   │   ├── group.go          # Group model
-│   │   ├── role.go           # Role enum
-│   │   └── user.go           # User model
+│   │   ├── audit.go             # Audit log model
+│   │   ├── group.go             # Group model
+│   │   ├── network.go           # Network model
+│   │   ├── role.go              # Role enum
+│   │   └── user.go              # User model
 │   ├── routes/
-│   │   └── routes.go         # Route definitions
+│   │   └── routes.go            # Route definitions
 │   └── services/
-│       ├── auth_service.go   # Auth business logic
-│       ├── group_service.go  # Group business logic
-│       └── user_service.go   # User business logic
+│       ├── auth_service.go      # Auth business logic
+│       ├── group_service.go     # Group business logic
+│       ├── network_service.go   # Network business logic
+│       └── user_service.go      # User business logic
 ├── web/
 │   ├── static/
 │   │   ├── css/
-│   │   │   └── style.css     # Custom styles
+│   │   │   └── style.css        # Custom styles
 │   │   └── js/
-│   │       └── app.js        # Frontend JavaScript
+│   │       └── app.js           # Frontend JavaScript
 │   └── templates/
 │       ├── dashboard.html
 │       ├── error.html
@@ -276,12 +372,56 @@ openvpn-mng/
 │       ├── profile.html
 │       ├── user_detail.html
 │       └── users.html
-├── docs/                      # Swagger generated docs
-├── config.yaml               # Configuration file
+├── docs/                         # Swagger generated docs
+├── config.yaml                   # Configuration file
+├── config.yaml.example           # Configuration template
 ├── go.mod
 ├── go.sum
 └── README.md
 ```
+
+## Database Schema
+
+### Users Table
+- `id` (UUID) - Primary key
+- `username` (string) - Unique username
+- `password` (string) - Hashed password
+- `manager_id` (UUID, nullable) - Reference to manager user
+- `first_name`, `middle_name`, `last_name` (string)
+- `email` (string) - Unique email
+- `telephone` (string)
+- `role` (enum) - USER, MANAGER, ADMIN
+- `created_at`, `updated_at`, `deleted_at` - Timestamps
+- `created_by`, `updated_by` (UUID) - Audit fields
+
+### Groups Table
+- `id` (UUID) - Primary key
+- `name` (string) - Unique group name
+- `description` (string)
+- `created_at`, `updated_at`, `deleted_at` - Timestamps
+- `created_by`, `updated_by` (UUID) - Audit fields
+
+### Networks Table
+- `id` (UUID) - Primary key
+- `name` (string) - Unique network name
+- `cidr` (string) - IP address or CIDR range
+- `description` (string)
+- `created_at`, `updated_at`, `deleted_at` - Timestamps
+- `created_by`, `updated_by` (UUID) - Audit fields
+
+### Junction Tables
+- `user_groups` - Many-to-many: Users <-> Groups
+- `network_groups` - Many-to-many: Networks <-> Groups
+
+### Audit Logs Table
+- `id` (UUID) - Primary key
+- `user_id` (UUID) - Who performed the action
+- `action` (enum) - CREATE, READ, UPDATE, DELETE, LOGIN, LOGOUT
+- `entity_type` (string) - user, group, network, etc.
+- `entity_id` (UUID) - Affected entity
+- `old_values`, `new_values` (JSON) - Change details
+- `ip_address`, `user_agent` (string) - Request info
+- `created_at` - Timestamp
 
 ## Security Considerations
 
@@ -291,6 +431,7 @@ openvpn-mng/
 4. **Database security**: Use strong passwords and restrict database access
 5. **IP filtering**: Restrict Swagger access to trusted IPs in production
 6. **Audit logging**: Monitor audit logs for suspicious activity
+7. **Log security**: In production with `output: "file"`, ensure log directory has proper permissions
 
 ## License
 

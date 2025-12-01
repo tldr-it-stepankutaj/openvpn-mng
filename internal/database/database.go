@@ -4,30 +4,34 @@ import (
 	"fmt"
 
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/config"
+	applogger "github.com/tldr-it-stepankutaj/openvpn-mng/internal/logger"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 var DB *gorm.DB
 
 // Initialize initializes the database connection
-func Initialize(cfg *config.DatabaseConfig) error {
+func Initialize(dbCfg *config.DatabaseConfig, logCfg *config.LoggingConfig) error {
 	var dialector gorm.Dialector
 
-	switch cfg.Type {
+	switch dbCfg.Type {
 	case "postgres":
-		dialector = postgres.Open(cfg.GetDSN())
+		dialector = postgres.Open(dbCfg.GetDSN())
 	case "mysql":
-		dialector = mysql.Open(cfg.GetDSN())
+		dialector = mysql.Open(dbCfg.GetDSN())
 	default:
-		return fmt.Errorf("unsupported database type: %s", cfg.Type)
+		return fmt.Errorf("unsupported database type: %s", dbCfg.Type)
 	}
 
+	// Use custom GORM logger that integrates with our logging system
+	gormLogger := applogger.NewGormLogger(logCfg)
+
 	db, err := gorm.Open(dialector, &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger:                                   gormLogger,
+		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
@@ -39,12 +43,30 @@ func Initialize(cfg *config.DatabaseConfig) error {
 
 // Migrate runs database migrations
 func Migrate() error {
-	return DB.AutoMigrate(
-		&models.User{},
-		&models.Group{},
-		&models.UserGroup{},
-		&models.AuditLog{},
-	)
+	applogger.Info("Database migrations started")
+
+	// Define tables to migrate
+	tables := []struct {
+		name  string
+		model interface{}
+	}{
+		{"users", &models.User{}},
+		{"groups", &models.Group{}},
+		{"user_groups", &models.UserGroup{}},
+		{"networks", &models.Network{}},
+		{"network_groups", &models.NetworkGroup{}},
+		{"audit_logs", &models.AuditLog{}},
+	}
+
+	for _, t := range tables {
+		applogger.Debug("Migrating table", "table", t.name)
+		if err := DB.AutoMigrate(t.model); err != nil {
+			return fmt.Errorf("failed to migrate %s: %w", t.name, err)
+		}
+	}
+
+	applogger.Info("Database migrations completed")
+	return nil
 }
 
 // GetDB returns the database instance

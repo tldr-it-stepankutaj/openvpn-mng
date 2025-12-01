@@ -28,6 +28,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/config"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/database"
+	applogger "github.com/tldr-it-stepankutaj/openvpn-mng/internal/logger"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/models"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/routes"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/services"
@@ -47,28 +48,35 @@ func init() {
 func main() {
 	flag.Parse()
 
-	// Print version
-	log.Printf("OpenVPN Manager v%s starting...", version)
-
-	// Load configuration
+	// Load configuration first (needed for logger setup)
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	log.Printf("Configuration loaded from %s", configPath)
+	// Initialize logger
+	if err := applogger.Initialize(&cfg.Logging); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+	defer applogger.Close()
+
+	// Print version
+	applogger.Info("OpenVPN Manager starting", "version", version)
+	applogger.Info("Configuration loaded", "path", configPath)
+	applogger.Debug("Logging configuration", "output", cfg.Logging.Output, "format", cfg.Logging.Format, "level", cfg.Logging.Level)
 
 	// Initialize database
-	if err := database.Initialize(&cfg.Database); err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+	if err := database.Initialize(&cfg.Database, &cfg.Logging); err != nil {
+		applogger.Error("Failed to connect to database", "error", err)
+		os.Exit(1)
 	}
-	log.Printf("Connected to %s database at %s:%d", cfg.Database.Type, cfg.Database.Host, cfg.Database.Port)
+	applogger.Info("Connected to database", "type", cfg.Database.Type, "host", cfg.Database.Host, "port", cfg.Database.Port)
 
 	// Run migrations
 	if err := database.Migrate(); err != nil {
-		log.Fatalf("Failed to run database migrations: %v", err)
+		applogger.Error("Failed to run database migrations", "error", err)
+		os.Exit(1)
 	}
-	log.Println("Database migrations completed")
 
 	// Create a default admin user if not exists
 	createDefaultAdmin()
@@ -78,29 +86,32 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// Create a Gin router
-	r := gin.Default()
+	// Create a Gin router with our custom logger middleware
+	r := gin.New()
+	r.Use(applogger.GinLogger())
+	r.Use(applogger.GinRecovery())
 
 	// Setup routes
 	routes.SetupRoutes(r, cfg)
-	log.Println("Routes configured")
+	applogger.Info("Routes configured")
 
 	// API status
 	if cfg.API.Enabled {
-		log.Println("REST API enabled at /api/v1")
+		applogger.Info("REST API enabled", "path", "/api/v1")
 		if cfg.API.SwaggerEnabled {
-			log.Println("Swagger UI enabled at /swagger/index.html")
+			applogger.Info("Swagger UI enabled", "path", "/swagger/index.html")
 		}
 	} else {
-		log.Println("REST API disabled")
+		applogger.Info("REST API disabled")
 	}
 
 	// Start server
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
-	log.Printf("Starting server on %s", addr)
+	applogger.Info("Starting server", "address", addr)
 
 	if err := r.Run(addr); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		applogger.Error("Failed to start server", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -110,14 +121,14 @@ func createDefaultAdmin() {
 	// Check if admin exists
 	_, err := userService.GetByUsername("admin")
 	if err == nil {
-		log.Println("Default admin user already exists")
+		applogger.Debug("Default admin user already exists")
 		return
 	}
 
 	// Create admin user
 	hashedPassword, err := services.HashPassword("admin123")
 	if err != nil {
-		log.Printf("Failed to hash password: %v", err)
+		applogger.Error("Failed to hash password", "error", err)
 		return
 	}
 
@@ -134,10 +145,10 @@ func createDefaultAdmin() {
 	}
 
 	if err := database.GetDB().Create(admin).Error; err != nil {
-		log.Printf("Failed to create default admin user: %v", err)
+		applogger.Error("Failed to create default admin user", "error", err)
 		return
 	}
 
-	log.Println("Default admin user created (username: admin, password: admin123)")
-	log.Println("WARNING: Please change the default admin password immediately!")
+	applogger.Info("Default admin user created", "username", "admin", "password", "admin123")
+	applogger.Warn("Please change the default admin password immediately!")
 }

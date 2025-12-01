@@ -13,6 +13,15 @@ type Config struct {
 	Database DatabaseConfig `yaml:"database"`
 	API      APIConfig      `yaml:"api"`
 	Auth     AuthConfig     `yaml:"auth"`
+	Logging  LoggingConfig  `yaml:"logging"`
+}
+
+// LoggingConfig represents logging configuration
+type LoggingConfig struct {
+	Output string `yaml:"output"` // "stdout", "file", "both" (default: stdout)
+	Path   string `yaml:"path"`   // Directory for log files (default: current directory)
+	Format string `yaml:"format"` // "text" or "json" (default: text)
+	Level  string `yaml:"level"`  // "debug", "info", "warn", "error" (default: info)
 }
 
 // ServerConfig represents server-specific configuration
@@ -70,6 +79,17 @@ func Load(path string) (*Config, error) {
 	}
 	if config.Auth.SessionExpiry == 0 {
 		config.Auth.SessionExpiry = 8
+	}
+
+	// Logging defaults
+	if config.Logging.Output == "" {
+		config.Logging.Output = "stdout"
+	}
+	if config.Logging.Format == "" {
+		config.Logging.Format = "text"
+	}
+	if config.Logging.Level == "" {
+		config.Logging.Level = "info"
 	}
 
 	return &config, nil

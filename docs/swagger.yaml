@@ -1,5 +1,13 @@
 basePath: /
 definitions:
+  dto.AddGroupToNetworkRequest:
+    properties:
+      group_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    required:
+    - group_id
+    type: object
   dto.AddUserToGroupRequest:
     properties:
       user_id:
@@ -17,6 +25,21 @@ definitions:
         minLength: 2
         type: string
     required:
+    - name
+    type: object
+  dto.CreateNetworkRequest:
+    properties:
+      cidr:
+        example: 192.168.1.0/24
+        type: string
+      description:
+        example: Main office network segment
+        type: string
+      name:
+        example: Office Network
+        type: string
+    required:
+    - cidr
     - name
     type: object
   dto.CreateUserRequest:
@@ -121,6 +144,52 @@ definitions:
       user:
         $ref: '#/definitions/dto.UserResponse'
     type: object
+  dto.NetworkListResponse:
+    properties:
+      networks:
+        items:
+          $ref: '#/definitions/dto.NetworkResponse'
+        type: array
+      page:
+        example: 1
+        type: integer
+      page_size:
+        example: 20
+        type: integer
+      total:
+        example: 100
+        type: integer
+      total_pages:
+        example: 5
+        type: integer
+    type: object
+  dto.NetworkResponse:
+    properties:
+      cidr:
+        example: 192.168.1.0/24
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        example: Main office network segment
+        type: string
+      groups:
+        items:
+          $ref: '#/definitions/dto.GroupResponse'
+        type: array
+      id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      name:
+        example: Office Network
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+    type: object
   dto.SuccessResponse:
     properties:
       data: {}
@@ -135,6 +204,18 @@ definitions:
       name:
         maxLength: 100
         minLength: 2
+        type: string
+    type: object
+  dto.UpdateNetworkRequest:
+    properties:
+      cidr:
+        example: 192.168.2.0/24
+        type: string
+      description:
+        example: Updated description
+        type: string
+      name:
+        example: Office Network Updated
         type: string
     type: object
   dto.UpdatePasswordRequest:
@@ -505,7 +586,8 @@ paths:
       - groups
   /api/v1/groups/{id}/users:
     get:
-      description: Get all users in a group
+      description: Get users in a group. Admin sees all. Manager sees only subordinates
+        in the group. User sees only themselves if member.
       parameters:
       - description: Group ID
         in: path
@@ -541,7 +623,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Add a user to a group (Admin only)
+      description: Add a user to a group. Admin can add anyone. Manager can only add
+        their subordinates.
       parameters:
       - description: Group ID
         in: path
@@ -584,7 +667,8 @@ paths:
       - groups
   /api/v1/groups/{id}/users/{user_id}:
     delete:
-      description: Remove a user from a group (Admin only)
+      description: Remove a user from a group. Admin can remove anyone. Manager can
+        only remove their subordinates.
       parameters:
       - description: Group ID
         in: path
@@ -620,9 +704,321 @@ paths:
       summary: Remove user from group
       tags:
       - groups
+  /api/v1/networks:
+    get:
+      description: List networks with pagination (Admin only)
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.NetworkListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List networks
+      tags:
+      - networks
+    post:
+      consumes:
+      - application/json
+      description: Create a new network (Admin only)
+      parameters:
+      - description: Network data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create network
+      tags:
+      - networks
+  /api/v1/networks/{id}:
+    delete:
+      description: Delete a network (Admin only)
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete network
+      tags:
+      - networks
+    get:
+      description: Get a network by ID (Admin only)
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get network
+      tags:
+      - networks
+    put:
+      consumes:
+      - application/json
+      description: Update a network (Admin only)
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Network data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.NetworkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update network
+      tags:
+      - networks
+  /api/v1/networks/{id}/groups:
+    get:
+      description: Get all groups assigned to a network (Admin only)
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.GroupResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get network groups
+      tags:
+      - networks
+    post:
+      consumes:
+      - application/json
+      description: Add a group to a network (Admin only)
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Group data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddGroupToNetworkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add group to network
+      tags:
+      - networks
+  /api/v1/networks/{id}/groups/{group_id}:
+    delete:
+      description: Remove a group from a network (Admin only)
+      parameters:
+      - description: Network ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Group ID
+        in: path
+        name: group_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove group from network
+      tags:
+      - networks
   /api/v1/users:
     get:
-      description: List users with pagination
+      description: List users with pagination. Admin sees all users. Manager sees
+        only subordinates. User sees only themselves.
       parameters:
       - default: 1
         description: Page number
@@ -657,7 +1053,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new user (Admin only)
+      description: Create a new user (Admin or Manager). Managers can only create
+        users assigned to themselves.
       parameters:
       - description: User data
         in: body
@@ -765,7 +1162,8 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update a user
+      description: Update a user. Admin can update anyone. Manager can update their
+        subordinates. User cannot use this endpoint.
       parameters:
       - description: User ID
         in: path

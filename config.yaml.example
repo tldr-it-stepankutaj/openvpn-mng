@@ -24,3 +24,9 @@ auth:
   jwt_secret: "your-super-secret-jwt-key-change-in-production"
   token_expiry: 24      # hours
   session_expiry: 8     # hours
+
+logging:
+  output: "stdout"      # "stdout" (default, for K8s/Docker), "file", or "both"
+  path: ""              # Directory for log files (empty = current directory, only used if output includes "file")
+  format: "text"        # "text" (default) or "json"
+  level: "info"         # "debug", "info", "warn", "error"

@@ -56,6 +56,8 @@ func Migrate() error {
 		{"networks", &models.Network{}},
 		{"network_groups", &models.NetworkGroup{}},
 		{"audit_logs", &models.AuditLog{}},
+		{"vpn_sessions", &models.VpnSession{}},
+		{"vpn_traffic_stats", &models.VpnTrafficStats{}},
 	}
 
 	for _, t := range tables {

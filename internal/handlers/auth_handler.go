@@ -50,9 +50,20 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	token, user, err := h.authService.Authenticate(req.Username, req.Password)
 	if err != nil {
+		// Provide specific error messages for different authentication failures
+		message := "Invalid username or password"
+		switch err {
+		case services.ErrUserInactive:
+			message = "User account is inactive"
+		case services.ErrUserNotYetValid:
+			message = "User account is not yet valid"
+		case services.ErrUserExpired:
+			message = "User account has expired"
+		}
+
 		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
 			Error:   "Unauthorized",
-			Message: "Invalid username or password",
+			Message: message,
 			Code:    http.StatusUnauthorized,
 		})
 		return

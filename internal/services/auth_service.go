@@ -16,6 +16,9 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("invalid username or password")
 	ErrUserNotFound       = errors.New("user not found")
+	ErrUserInactive       = errors.New("user account is inactive")
+	ErrUserNotYetValid    = errors.New("user account is not yet valid")
+	ErrUserExpired        = errors.New("user account has expired")
 )
 
 // AuthService provides authentication services
@@ -41,6 +44,11 @@ func (s *AuthService) Authenticate(username, password string) (string, *models.U
 		return "", nil, ErrInvalidCredentials
 	}
 
+	// Check if user is active and within validity period
+	if err := s.validateUserAccess(&user); err != nil {
+		return "", nil, err
+	}
+
 	// Generate JWT token
 	token, err := s.generateToken(&user)
 	if err != nil {
@@ -48,6 +56,35 @@ func (s *AuthService) Authenticate(username, password string) (string, *models.U
 	}
 
 	return token, &user, nil
+}
+
+// validateUserAccess checks if user is active and within validity period
+func (s *AuthService) validateUserAccess(user *models.User) error {
+	if !user.IsActive {
+		return ErrUserInactive
+	}
+
+	if !user.IsValidForLogin() {
+		// Determine specific error
+		now := time.Now()
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+		if user.ValidFrom != nil {
+			validFromDate := time.Date(user.ValidFrom.Year(), user.ValidFrom.Month(), user.ValidFrom.Day(), 0, 0, 0, 0, user.ValidFrom.Location())
+			if today.Before(validFromDate) {
+				return ErrUserNotYetValid
+			}
+		}
+
+		if user.ValidTo != nil {
+			validToDate := time.Date(user.ValidTo.Year(), user.ValidTo.Month(), user.ValidTo.Day(), 23, 59, 59, 0, user.ValidTo.Location())
+			if today.After(validToDate) {
+				return ErrUserExpired
+			}
+		}
+	}
+
+	return nil
 }
 
 // generateToken generates a JWT token for a user

@@ -18,6 +18,10 @@ type CreateUserRequest struct {
 	Email      string      `json:"email" binding:"required,email,max=255"`
 	Telephone  string      `json:"telephone,omitempty" binding:"max=50"`
 	Role       models.Role `json:"role" binding:"required,oneof=USER MANAGER ADMIN"`
+	IsActive   *bool       `json:"is_active,omitempty"`
+	ValidFrom  *time.Time  `json:"valid_from,omitempty"`
+	ValidTo    *time.Time  `json:"valid_to,omitempty"`
+	VpnIP      string      `json:"vpn_ip,omitempty" binding:"max=45"`
 }
 
 // UpdateUserRequest represents a request to update a user
@@ -29,6 +33,10 @@ type UpdateUserRequest struct {
 	Email      string      `json:"email,omitempty" binding:"omitempty,email,max=255"`
 	Telephone  string      `json:"telephone,omitempty" binding:"max=50"`
 	Role       models.Role `json:"role,omitempty" binding:"omitempty,oneof=USER MANAGER ADMIN"`
+	IsActive   *bool       `json:"is_active,omitempty"`
+	ValidFrom  *time.Time  `json:"valid_from,omitempty"`
+	ValidTo    *time.Time  `json:"valid_to,omitempty"`
+	VpnIP      *string     `json:"vpn_ip,omitempty" binding:"omitempty,max=45"`
 }
 
 // UpdatePasswordRequest represents a request to update user password
@@ -58,6 +66,10 @@ type UserResponse struct {
 	Email      string        `json:"email"`
 	Telephone  string        `json:"telephone,omitempty"`
 	Role       models.Role   `json:"role"`
+	IsActive   bool          `json:"is_active"`
+	ValidFrom  *time.Time    `json:"valid_from,omitempty"`
+	ValidTo    *time.Time    `json:"valid_to,omitempty"`
+	VpnIP      string        `json:"vpn_ip,omitempty"`
 	CreatedAt  time.Time     `json:"created_at"`
 	UpdatedAt  *time.Time    `json:"updated_at,omitempty"`
 	CreatedBy  uuid.UUID     `json:"created_by"`
@@ -89,6 +101,10 @@ func ToUserResponse(user *models.User) *UserResponse {
 		Email:      user.Email,
 		Telephone:  user.Telephone,
 		Role:       user.Role,
+		IsActive:   user.IsActive,
+		ValidFrom:  user.ValidFrom,
+		ValidTo:    user.ValidTo,
+		VpnIP:      user.VpnIP,
 		CreatedAt:  user.CreatedAt,
 		UpdatedAt:  user.UpdatedAt,
 		CreatedBy:  user.CreatedBy,

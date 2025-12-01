@@ -23,6 +23,8 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 	userHandler := handlers.NewUserHandler()
 	groupHandler := handlers.NewGroupHandler()
 	networkHandler := handlers.NewNetworkHandler()
+	vpnSessionHandler := handlers.NewVpnSessionHandler()
+	auditHandler := handlers.NewAuditHandler()
 	webHandler := handlers.NewWebHandler()
 
 	// Web routes (HTML pages)
@@ -102,6 +104,40 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 					networks.GET("/:id/groups", networkHandler.GetGroups)
 					networks.POST("/:id/groups", networkHandler.AddGroup)
 					networks.DELETE("/:id/groups/:group_id", networkHandler.RemoveGroup)
+				}
+
+				// VPN Sessions
+				vpn := protected.Group("/vpn")
+				{
+					// Write endpoints - any authenticated user (VPN server calls these)
+					vpn.POST("/sessions", vpnSessionHandler.Create)
+					vpn.PUT("/sessions/:id/disconnect", vpnSessionHandler.Disconnect)
+					vpn.POST("/traffic-stats", vpnSessionHandler.CreateTrafficStats)
+
+					// Read endpoints - Admin only
+					vpnAdmin := vpn.Group("")
+					vpnAdmin.Use(middleware.RequireAdmin())
+					{
+						vpnAdmin.GET("/sessions", vpnSessionHandler.List)
+						vpnAdmin.GET("/sessions/active", vpnSessionHandler.GetActive)
+						vpnAdmin.GET("/sessions/:id", vpnSessionHandler.Get)
+						vpnAdmin.GET("/stats", vpnSessionHandler.GetStats)
+						vpnAdmin.GET("/stats/users", vpnSessionHandler.GetUserStats)
+						vpnAdmin.GET("/traffic-stats", vpnSessionHandler.ListTrafficStats)
+					}
+				}
+
+				// Audit logs (Admin only)
+				audit := protected.Group("/audit")
+				audit.Use(middleware.RequireAdmin())
+				{
+					audit.GET("", auditHandler.List)
+					audit.GET("/actions", auditHandler.GetActions)
+					audit.GET("/entity-types", auditHandler.GetEntityTypes)
+					audit.GET("/stats", auditHandler.GetStats)
+					audit.GET("/entity/:entity_type/:entity_id", auditHandler.GetByEntity)
+					audit.GET("/user/:user_id", auditHandler.GetByUser)
+					audit.GET("/:id", auditHandler.Get)
 				}
 			}
 		}

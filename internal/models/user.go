@@ -20,6 +20,10 @@ type User struct {
 	Email        string         `gorm:"uniqueIndex;size:255;not null" json:"email"`
 	Telephone    string         `gorm:"size:50" json:"telephone,omitempty"`
 	Role         Role           `gorm:"size:20;not null;default:'USER'" json:"role"`
+	IsActive     bool           `gorm:"not null;default:true" json:"is_active"`
+	ValidFrom    *time.Time     `gorm:"type:date" json:"valid_from,omitempty"`
+	ValidTo      *time.Time     `gorm:"type:date" json:"valid_to,omitempty"`
+	VpnIP        string         `gorm:"size:45" json:"vpn_ip,omitempty"`
 	CreatedAt    time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt    *time.Time     `gorm:"autoUpdateTime" json:"updated_at,omitempty"`
 	CreatedBy    uuid.UUID      `gorm:"type:uuid;not null" json:"created_by"`
@@ -77,4 +81,32 @@ func (u *User) CanManage(targetUser *User) bool {
 	}
 
 	return false
+}
+
+// IsValidForLogin checks if user can login based on is_active, valid_from, valid_to
+func (u *User) IsValidForLogin() bool {
+	if !u.IsActive {
+		return false
+	}
+
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
+	// Check valid_from
+	if u.ValidFrom != nil {
+		validFromDate := time.Date(u.ValidFrom.Year(), u.ValidFrom.Month(), u.ValidFrom.Day(), 0, 0, 0, 0, u.ValidFrom.Location())
+		if today.Before(validFromDate) {
+			return false
+		}
+	}
+
+	// Check valid_to
+	if u.ValidTo != nil {
+		validToDate := time.Date(u.ValidTo.Year(), u.ValidTo.Month(), u.ValidTo.Day(), 23, 59, 59, 0, u.ValidTo.Location())
+		if today.After(validToDate) {
+			return false
+		}
+	}
+
+	return true
 }

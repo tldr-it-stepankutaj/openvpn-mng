@@ -15,6 +15,48 @@ definitions:
     required:
     - user_id
     type: object
+  dto.AuditLogListResponse:
+    properties:
+      logs:
+        items:
+          $ref: '#/definitions/dto.AuditLogResponse'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  dto.AuditLogResponse:
+    properties:
+      action:
+        $ref: '#/definitions/models.AuditAction'
+      created_at:
+        type: string
+      details:
+        type: string
+      entity_id:
+        type: string
+      entity_type:
+        type: string
+      id:
+        type: string
+      ip_address:
+        type: string
+      new_values:
+        type: string
+      old_values:
+        type: string
+      user:
+        $ref: '#/definitions/dto.UserResponse'
+      user_agent:
+        type: string
+      user_id:
+        type: string
+    type: object
   dto.CreateGroupRequest:
     properties:
       description:
@@ -50,6 +92,8 @@ definitions:
       first_name:
         maxLength: 100
         type: string
+      is_active:
+        type: boolean
       last_name:
         maxLength: 100
         type: string
@@ -75,6 +119,13 @@ definitions:
         maxLength: 100
         minLength: 3
         type: string
+      valid_from:
+        type: string
+      valid_to:
+        type: string
+      vpn_ip:
+        maxLength: 45
+        type: string
     required:
     - email
     - first_name
@@ -82,6 +133,37 @@ definitions:
     - password
     - role
     - username
+    type: object
+  dto.CreateVpnSessionRequest:
+    properties:
+      client_ip:
+        maxLength: 45
+        type: string
+      connected_at:
+        type: string
+      user_id:
+        type: string
+      vpn_ip:
+        maxLength: 45
+        type: string
+    required:
+    - connected_at
+    - user_id
+    - vpn_ip
+    type: object
+  dto.CreateVpnTrafficStatsRequest:
+    properties:
+      bytes_received_delta:
+        type: integer
+      bytes_sent_delta:
+        type: integer
+      session_id:
+        type: string
+      timestamp:
+        type: string
+    required:
+    - session_id
+    - timestamp
     type: object
   dto.ErrorResponse:
     properties:
@@ -255,6 +337,8 @@ definitions:
       first_name:
         maxLength: 100
         type: string
+      is_active:
+        type: boolean
       last_name:
         maxLength: 100
         type: string
@@ -273,6 +357,26 @@ definitions:
       telephone:
         maxLength: 50
         type: string
+      valid_from:
+        type: string
+      valid_to:
+        type: string
+      vpn_ip:
+        maxLength: 45
+        type: string
+    type: object
+  dto.UpdateVpnSessionRequest:
+    properties:
+      bytes_received:
+        type: integer
+      bytes_sent:
+        type: integer
+      disconnect_reason:
+        $ref: '#/definitions/models.DisconnectReason'
+      disconnected_at:
+        type: string
+    required:
+    - disconnected_at
     type: object
   dto.UserListResponse:
     properties:
@@ -301,6 +405,8 @@ definitions:
         type: string
       id:
         type: string
+      is_active:
+        type: boolean
       last_name:
         type: string
       manager:
@@ -319,7 +425,130 @@ definitions:
         type: string
       username:
         type: string
+      valid_from:
+        type: string
+      valid_to:
+        type: string
+      vpn_ip:
+        type: string
     type: object
+  dto.VpnSessionListResponse:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      sessions:
+        items:
+          $ref: '#/definitions/dto.VpnSessionResponse'
+        type: array
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  dto.VpnSessionResponse:
+    properties:
+      bytes_received:
+        type: integer
+      bytes_sent:
+        type: integer
+      client_ip:
+        type: string
+      connected_at:
+        type: string
+      disconnect_reason:
+        $ref: '#/definitions/models.DisconnectReason'
+      disconnected_at:
+        type: string
+      duration:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      total_bytes:
+        type: integer
+      user:
+        $ref: '#/definitions/dto.UserResponse'
+      user_id:
+        type: string
+      vpn_ip:
+        type: string
+    type: object
+  dto.VpnTrafficStatsListResponse:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      stats:
+        items:
+          $ref: '#/definitions/dto.VpnTrafficStatsResponse'
+        type: array
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  dto.VpnTrafficStatsResponse:
+    properties:
+      bytes_received_delta:
+        type: integer
+      bytes_sent_delta:
+        type: integer
+      id:
+        type: string
+      session_id:
+        type: string
+      timestamp:
+        type: string
+      total_bytes_delta:
+        type: integer
+    type: object
+  dto.VpnUsageStats:
+    properties:
+      active_sessions:
+        type: integer
+      total_bytes:
+        type: integer
+      total_bytes_received:
+        type: integer
+      total_bytes_sent:
+        type: integer
+      total_sessions:
+        type: integer
+    type: object
+  models.AuditAction:
+    enum:
+    - CREATE
+    - READ
+    - UPDATE
+    - DELETE
+    - LOGIN
+    - LOGOUT
+    type: string
+    x-enum-varnames:
+    - AuditActionCreate
+    - AuditActionRead
+    - AuditActionUpdate
+    - AuditActionDelete
+    - AuditActionLogin
+    - AuditActionLogout
+  models.DisconnectReason:
+    enum:
+    - USER_REQUEST
+    - TIMEOUT
+    - SERVER_SHUTDOWN
+    - ERROR
+    - ADMIN_ACTION
+    type: string
+    x-enum-varnames:
+    - DisconnectReasonUserRequest
+    - DisconnectReasonTimeout
+    - DisconnectReasonServerShutdown
+    - DisconnectReasonError
+    - DisconnectReasonAdminAction
   models.Role:
     enum:
     - USER
@@ -342,6 +571,326 @@ info:
   title: OpenVPN Manager API
   version: "1.0"
 paths:
+  /api/v1/audit:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of audit logs (ADMIN only)
+      parameters:
+      - description: Filter by user ID
+        in: query
+        name: user_id
+        type: string
+      - description: Filter by action (CREATE, READ, UPDATE, DELETE, LOGIN, LOGOUT)
+        in: query
+        name: action
+        type: string
+      - description: Filter by entity type
+        in: query
+        name: entity_type
+        type: string
+      - description: Filter by entity ID
+        in: query
+        name: entity_id
+        type: string
+      - description: Filter by start date (RFC3339)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter by end date (RFC3339)
+        in: query
+        name: end_date
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuditLogListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List audit logs
+      tags:
+      - audit
+  /api/v1/audit/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get an audit log by ID (ADMIN only)
+      parameters:
+      - description: Audit log ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuditLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get audit log
+      tags:
+      - audit
+  /api/v1/audit/actions:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all available audit actions (ADMIN only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get available audit actions
+      tags:
+      - audit
+  /api/v1/audit/entity-types:
+    get:
+      consumes:
+      - application/json
+      description: Get list of all entity types that have been logged (ADMIN only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                type: string
+              type: array
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get audit entity types
+      tags:
+      - audit
+  /api/v1/audit/entity/{entity_type}/{entity_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get audit logs for a specific entity (ADMIN only)
+      parameters:
+      - description: Entity type (user, group, network)
+        in: path
+        name: entity_type
+        required: true
+        type: string
+      - description: Entity ID
+        in: path
+        name: entity_id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuditLogListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get audit logs by entity
+      tags:
+      - audit
+  /api/v1/audit/stats:
+    get:
+      consumes:
+      - application/json
+      description: Get audit log statistics (ADMIN only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get audit statistics
+      tags:
+      - audit
+  /api/v1/audit/user/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get audit logs for a specific user (ADMIN only)
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AuditLogListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get audit logs by user
+      tags:
+      - audit
   /api/v1/auth/login:
     post:
       consumes:
@@ -1268,6 +1817,395 @@ paths:
       summary: Update own profile
       tags:
       - users
+  /api/v1/vpn/sessions:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of VPN sessions (ADMIN only)
+      parameters:
+      - description: Filter by user ID
+        in: query
+        name: user_id
+        type: string
+      - description: Filter by VPN IP
+        in: query
+        name: vpn_ip
+        type: string
+      - description: Filter by active status
+        in: query
+        name: is_active
+        type: boolean
+      - description: Filter by start date (RFC3339)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter by end date (RFC3339)
+        in: query
+        name: end_date
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VpnSessionListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List VPN sessions
+      tags:
+      - vpn-sessions
+    post:
+      consumes:
+      - application/json
+      description: Create a new VPN session (called by VPN server)
+      parameters:
+      - description: Session data
+        in: body
+        name: session
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateVpnSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.VpnSessionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create VPN session
+      tags:
+      - vpn-sessions
+  /api/v1/vpn/sessions/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a VPN session by ID (ADMIN only)
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VpnSessionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get VPN session
+      tags:
+      - vpn-sessions
+  /api/v1/vpn/sessions/{id}/disconnect:
+    put:
+      consumes:
+      - application/json
+      description: Update a VPN session with disconnect info (called by VPN server)
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Disconnect data
+        in: body
+        name: session
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateVpnSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VpnSessionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Disconnect VPN session
+      tags:
+      - vpn-sessions
+  /api/v1/vpn/sessions/active:
+    get:
+      consumes:
+      - application/json
+      description: Get all currently active VPN sessions (ADMIN only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.VpnSessionResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get active VPN sessions
+      tags:
+      - vpn-sessions
+  /api/v1/vpn/stats:
+    get:
+      consumes:
+      - application/json
+      description: Get aggregated VPN usage statistics (ADMIN only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VpnUsageStats'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get VPN usage statistics
+      tags:
+      - vpn-sessions
+  /api/v1/vpn/stats/users:
+    get:
+      consumes:
+      - application/json
+      description: Get VPN usage statistics aggregated per user (ADMIN only)
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get VPN usage statistics per user
+      tags:
+      - vpn-sessions
+  /api/v1/vpn/traffic-stats:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of traffic stats (ADMIN only)
+      parameters:
+      - description: Filter by session ID
+        in: query
+        name: session_id
+        type: string
+      - description: Filter by start date (RFC3339)
+        in: query
+        name: start_date
+        type: string
+      - description: Filter by end date (RFC3339)
+        in: query
+        name: end_date
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VpnTrafficStatsListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List traffic stats
+      tags:
+      - vpn-sessions
+    post:
+      consumes:
+      - application/json
+      description: Create a new traffic stats entry (called by VPN server)
+      parameters:
+      - description: Stats data
+        in: body
+        name: stats
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateVpnTrafficStatsRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.VpnTrafficStatsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create traffic stats
+      tags:
+      - vpn-sessions
 securityDefinitions:
   BearerAuth:
     description: 'Type "Bearer" followed by a space and JWT token. Example: "Bearer

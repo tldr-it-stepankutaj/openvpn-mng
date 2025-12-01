@@ -36,6 +36,12 @@ func (s *UserService) Create(req *dto.CreateUserRequest, createdBy uuid.UUID) (*
 		return nil, err
 	}
 
+	// Default is_active to true if not specified
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
 	user := &models.User{
 		Username:   req.Username,
 		Password:   hashedPassword,
@@ -46,6 +52,10 @@ func (s *UserService) Create(req *dto.CreateUserRequest, createdBy uuid.UUID) (*
 		Email:      req.Email,
 		Telephone:  req.Telephone,
 		Role:       req.Role,
+		IsActive:   isActive,
+		ValidFrom:  req.ValidFrom,
+		ValidTo:    req.ValidTo,
+		VpnIP:      req.VpnIP,
 		CreatedBy:  createdBy,
 	}
 
@@ -109,6 +119,18 @@ func (s *UserService) Update(id uuid.UUID, req *dto.UpdateUserRequest, updatedBy
 	}
 	if req.ManagerID != nil {
 		updates["manager_id"] = req.ManagerID
+	}
+	if req.IsActive != nil {
+		updates["is_active"] = *req.IsActive
+	}
+	if req.ValidFrom != nil {
+		updates["valid_from"] = req.ValidFrom
+	}
+	if req.ValidTo != nil {
+		updates["valid_to"] = req.ValidTo
+	}
+	if req.VpnIP != nil {
+		updates["vpn_ip"] = *req.VpnIP
 	}
 
 	updates["updated_by"] = updatedBy

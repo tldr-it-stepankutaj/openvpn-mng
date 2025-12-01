@@ -5,14 +5,17 @@ A web-based management system for OpenVPN users, groups, networks, and access co
 ## Features
 
 - **User Management**: Create, update, delete users with role-based access control
+- **VPN User Validity**: Control user access with `is_active`, `valid_from`, `valid_to` fields
+- **Static VPN IP**: Optionally assign static VPN IP addresses to users
 - **Group Management**: Organize users into groups (IT, HR, Finance, etc.)
 - **Network Management**: Define network segments (IP/CIDR) and assign them to groups
+- **VPN Session Tracking**: Monitor active connections, traffic statistics, and usage history
 - **Role-Based Access Control (RBAC)**:
   - `USER` - Can only view and edit their own profile
   - `MANAGER` - Can create and manage users assigned to them
-  - `ADMIN` - Full access to all resources including networks
+  - `ADMIN` - Full access to all resources including networks, VPN sessions, and audit logs
 - **Manager Hierarchy**: Users can be assigned to a manager for hierarchical access control
-- **Audit Logging**: Track all operations (create, read, update, delete, login, logout)
+- **Audit Logging**: Track all operations (create, read, update, delete, login, logout) with full API access
 - **REST API**: Full-featured API with Swagger documentation
 - **Web Interface**: Bootstrap-based HTML interface for user-friendly management
 - **Database Support**: PostgreSQL and MySQL support via GORM
@@ -249,6 +252,11 @@ Environment variables can override config file settings if needed.
 | POST | `/api/v1/auth/logout` | Logout (requires auth) |
 | GET | `/api/v1/auth/me` | Get current user info |
 
+**Login Validation:**
+- Checks `is_active` - returns "User account is inactive" if false
+- Checks `valid_from` - returns "User account is not yet valid" if before date
+- Checks `valid_to` - returns "User account has expired" if after date
+
 ### Users
 
 | Method | Endpoint | Description | Required Role |
@@ -260,6 +268,12 @@ Environment variables can override config file settings if needed.
 | DELETE | `/api/v1/users/:id` | Delete user | ADMIN |
 | PUT | `/api/v1/users/profile` | Update own profile | Any |
 | PUT | `/api/v1/users/password` | Change own password | Any |
+
+**User Fields:**
+- `is_active` (bool) - If false, user cannot login
+- `valid_from` (date, optional) - User valid from this date
+- `valid_to` (date, optional) - User valid until this date
+- `vpn_ip` (string, optional) - Static VPN IP address
 
 **Note:**
 - `USER` role can only see themselves in the list
@@ -297,6 +311,45 @@ Environment variables can override config file settings if needed.
 - `10.0.0.1/32` - Single IP address
 - `10.0.0.1` - Single IP (automatically converted to /32)
 
+### VPN Sessions
+
+| Method | Endpoint | Description | Required Role |
+|--------|----------|-------------|---------------|
+| POST | `/api/v1/vpn/sessions` | Create session (VPN server calls this) | Any authenticated |
+| PUT | `/api/v1/vpn/sessions/:id/disconnect` | Update session with disconnect info | Any authenticated |
+| POST | `/api/v1/vpn/traffic-stats` | Create traffic stats entry | Any authenticated |
+| GET | `/api/v1/vpn/sessions` | List all sessions | ADMIN |
+| GET | `/api/v1/vpn/sessions/active` | Get active sessions | ADMIN |
+| GET | `/api/v1/vpn/sessions/:id` | Get session details | ADMIN |
+| GET | `/api/v1/vpn/stats` | Get aggregated usage statistics | ADMIN |
+| GET | `/api/v1/vpn/stats/users` | Get usage statistics per user | ADMIN |
+| GET | `/api/v1/vpn/traffic-stats` | List traffic stats | ADMIN |
+
+**Session Fields:**
+- `user_id` - User who connected
+- `vpn_ip` - VPN IP address assigned
+- `client_ip` - Client's real IP address
+- `connected_at`, `disconnected_at` - Connection timestamps
+- `bytes_received`, `bytes_sent` - Traffic statistics
+- `disconnect_reason` - USER_REQUEST, TIMEOUT, SERVER_SHUTDOWN, ERROR, ADMIN_ACTION
+
+### Audit Logs
+
+| Method | Endpoint | Description | Required Role |
+|--------|----------|-------------|---------------|
+| GET | `/api/v1/audit` | List audit logs | ADMIN |
+| GET | `/api/v1/audit/:id` | Get audit log details | ADMIN |
+| GET | `/api/v1/audit/actions` | Get available audit actions | ADMIN |
+| GET | `/api/v1/audit/entity-types` | Get logged entity types | ADMIN |
+| GET | `/api/v1/audit/stats` | Get audit statistics | ADMIN |
+| GET | `/api/v1/audit/entity/:type/:id` | Get logs for specific entity | ADMIN |
+| GET | `/api/v1/audit/user/:id` | Get logs for specific user | ADMIN |
+
+**Audit Actions:**
+- `CREATE`, `READ`, `UPDATE`, `DELETE`, `LOGIN`, `LOGOUT`
+
+**Note:** Audit logs are append-only - no update or delete endpoints exist.
+
 ### Swagger Documentation
 
 Access Swagger UI at: `http://localhost:8080/swagger/index.html`
@@ -330,12 +383,15 @@ openvpn-mng/
 │   │   ├── audit.go             # Audit DTOs
 │   │   ├── group.go             # Group DTOs
 │   │   ├── network.go           # Network DTOs
-│   │   └── user.go              # User DTOs
+│   │   ├── user.go              # User DTOs
+│   │   └── vpn_session.go       # VPN session DTOs
 │   ├── handlers/
 │   │   ├── auth_handler.go      # Auth endpoints
+│   │   ├── audit_handler.go     # Audit endpoints
 │   │   ├── group_handler.go     # Group endpoints
 │   │   ├── network_handler.go   # Network endpoints
 │   │   ├── user_handler.go      # User endpoints
+│   │   ├── vpn_session_handler.go # VPN session endpoints
 │   │   └── web_handler.go       # HTML page handlers
 │   ├── logger/
 │   │   ├── logger.go            # Application logger
@@ -349,14 +405,18 @@ openvpn-mng/
 │   │   ├── group.go             # Group model
 │   │   ├── network.go           # Network model
 │   │   ├── role.go              # Role enum
-│   │   └── user.go              # User model
+│   │   ├── user.go              # User model
+│   │   ├── vpn_session.go       # VPN session model
+│   │   └── vpn_traffic_stats.go # VPN traffic stats model
 │   ├── routes/
 │   │   └── routes.go            # Route definitions
 │   └── services/
 │       ├── auth_service.go      # Auth business logic
+│       ├── audit_service.go     # Audit business logic
 │       ├── group_service.go     # Group business logic
 │       ├── network_service.go   # Network business logic
-│       └── user_service.go      # User business logic
+│       ├── user_service.go      # User business logic
+│       └── vpn_session_service.go # VPN session business logic
 ├── web/
 │   ├── static/
 │   │   ├── css/
@@ -391,6 +451,10 @@ openvpn-mng/
 - `email` (string) - Unique email
 - `telephone` (string)
 - `role` (enum) - USER, MANAGER, ADMIN
+- `is_active` (bool) - Whether user can login (default: true)
+- `valid_from` (date, nullable) - User valid from this date
+- `valid_to` (date, nullable) - User valid until this date
+- `vpn_ip` (string, nullable) - Static VPN IP address
 - `created_at`, `updated_at`, `deleted_at` - Timestamps
 - `created_by`, `updated_by` (UUID) - Audit fields
 
@@ -409,6 +473,24 @@ openvpn-mng/
 - `created_at`, `updated_at`, `deleted_at` - Timestamps
 - `created_by`, `updated_by` (UUID) - Audit fields
 
+### VPN Sessions Table
+- `id` (UUID) - Primary key
+- `user_id` (UUID) - Reference to user
+- `vpn_ip` (string) - Assigned VPN IP address
+- `client_ip` (string) - Client's real IP address
+- `connected_at` (timestamp) - Connection start time
+- `disconnected_at` (timestamp, nullable) - Connection end time
+- `bytes_received` (int64) - Total bytes received
+- `bytes_sent` (int64) - Total bytes sent
+- `disconnect_reason` (enum) - USER_REQUEST, TIMEOUT, SERVER_SHUTDOWN, ERROR, ADMIN_ACTION
+
+### VPN Traffic Stats Table
+- `id` (UUID) - Primary key
+- `session_id` (UUID) - Reference to VPN session
+- `timestamp` (timestamp) - Measurement timestamp
+- `bytes_received_delta` (int64) - Bytes received since last measurement
+- `bytes_sent_delta` (int64) - Bytes sent since last measurement
+
 ### Junction Tables
 - `user_groups` - Many-to-many: Users <-> Groups
 - `network_groups` - Many-to-many: Networks <-> Groups
@@ -423,6 +505,40 @@ openvpn-mng/
 - `ip_address`, `user_agent` (string) - Request info
 - `created_at` - Timestamp
 
+## OpenVPN Integration
+
+The API is designed to integrate with OpenVPN server scripts:
+
+### Connect Script (client-connect)
+```bash
+#!/bin/bash
+# Called when client connects
+curl -X POST "http://localhost:8080/api/v1/vpn/sessions" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"user_id\": \"$USER_ID\",
+    \"vpn_ip\": \"$ifconfig_pool_remote_ip\",
+    \"client_ip\": \"$trusted_ip\",
+    \"connected_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+  }"
+```
+
+### Disconnect Script (client-disconnect)
+```bash
+#!/bin/bash
+# Called when client disconnects
+curl -X PUT "http://localhost:8080/api/v1/vpn/sessions/$SESSION_ID/disconnect" \
+  -H "Authorization: Bearer $API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"disconnected_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+    \"bytes_received\": $bytes_received,
+    \"bytes_sent\": $bytes_sent,
+    \"disconnect_reason\": \"USER_REQUEST\"
+  }"
+```
+
 ## Security Considerations
 
 1. **Change default credentials**: Always change the default admin password
@@ -432,6 +548,8 @@ openvpn-mng/
 5. **IP filtering**: Restrict Swagger access to trusted IPs in production
 6. **Audit logging**: Monitor audit logs for suspicious activity
 7. **Log security**: In production with `output: "file"`, ensure log directory has proper permissions
+8. **User validity**: Use `valid_from`/`valid_to` for temporary access
+9. **VPN API authentication**: Use dedicated service account for VPN server integration
 
 ## License
 

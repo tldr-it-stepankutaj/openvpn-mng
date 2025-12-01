@@ -1,33 +1,43 @@
+# OpenVPN Manager Configuration
+# Copy this file to config.yaml and update the values
+
 server:
-  host: "127.0.0.1"
+  host: "127.0.0.1"     # Use "0.0.0.0" to listen on all interfaces
   port: 8080
 
 database:
-  type: "postgres"  # postgres or mysql
+  type: "postgres"      # "postgres" or "mysql"
   host: "localhost"
-  port: 5432
-  username: "your_username"
-  password: "your_password"
+  port: 5432            # 5432 for postgres, 3306 for mysql
+  username: "openvpn"
+  password: "change-me-in-production"
   database: "openvpn_mng"
-  sslmode: "disable"
+  sslmode: "disable"    # "disable", "require", "verify-ca", "verify-full" (postgres only)
 
 api:
   enabled: true
   swagger_enabled: true
-  vpn_token: "your-token-here"
   swagger_allowed_ips:
     - "127.0.0.1/32"
     - "::1/128"
     # - "192.168.1.0/24"  # Allow entire subnet
     # - "0.0.0.0/0"       # Allow all (not recommended for production)
 
+  # VPN Token for OpenVPN server integration (optional)
+  # Generate with: openssl rand -hex 32
+  # Leave empty to disable VPN Auth API endpoints
+  vpn_token: ""
+
 auth:
-  jwt_secret: "your-super-secret-jwt-key-change-in-production"
-  token_expiry: 24      # hours
-  session_expiry: 8     # hours
+  # JWT Secret for user authentication
+  # Generate with: openssl rand -hex 32
+  # IMPORTANT: Change this in production!
+  jwt_secret: "change-me-generate-with-openssl-rand-hex-32"
+  token_expiry: 24      # JWT token expiry in hours
+  session_expiry: 8     # Web session expiry in hours
 
 logging:
   output: "stdout"      # "stdout" (default, for K8s/Docker), "file", or "both"
-  path: ""              # Directory for log files (empty = current directory, only used if output includes "file")
-  format: "text"        # "text" (default) or "json"
+  path: ""              # Directory for log files (empty = current directory)
+  format: "text"        # "text" (default) or "json" (recommended for log aggregators)
   level: "info"         # "debug", "info", "warn", "error"

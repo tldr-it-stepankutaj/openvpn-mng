@@ -577,6 +577,74 @@ definitions:
       total_sessions:
         type: integer
     type: object
+  handlers.VpnAuthRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  handlers.VpnAuthResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+      user_id:
+        type: string
+      username:
+        type: string
+      vpn_ip:
+        type: string
+    type: object
+  handlers.VpnRouteResponse:
+    properties:
+      cidr:
+        type: string
+      description:
+        type: string
+      group_name:
+        type: string
+      name:
+        type: string
+    type: object
+  handlers.VpnUserResponse:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      last_name:
+        type: string
+      username:
+        type: string
+      valid_from:
+        type: string
+      valid_to:
+        type: string
+      vpn_ip:
+        type: string
+    type: object
+  handlers.VpnUserRoutesResponse:
+    properties:
+      routes:
+        items:
+          $ref: '#/definitions/handlers.VpnRouteResponse'
+        type: array
+      user_id:
+        type: string
+      username:
+        type: string
+      vpn_ip:
+        type: string
+    type: object
   models.AuditAction:
     enum:
     - CREATE
@@ -2111,6 +2179,217 @@ paths:
       summary: Update own profile
       tags:
       - users
+  /api/v1/vpn-auth/authenticate:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user for VPN connection (called by OpenVPN auth-user-pass-verify
+        script)
+      parameters:
+      - description: User credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.VpnAuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.VpnAuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.VpnAuthResponse'
+      security:
+      - VpnToken: []
+      summary: Authenticate VPN user
+      tags:
+      - vpn-auth
+  /api/v1/vpn-auth/sessions:
+    post:
+      consumes:
+      - application/json
+      description: Create a new VPN session (called by OpenVPN client-connect script)
+      parameters:
+      - description: Session data
+        in: body
+        name: session
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateVpnSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.VpnSessionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - VpnToken: []
+      summary: Create VPN session
+      tags:
+      - vpn-auth
+  /api/v1/vpn-auth/sessions/{id}/disconnect:
+    put:
+      consumes:
+      - application/json
+      description: Update a VPN session with disconnect info (called by OpenVPN client-disconnect
+        script)
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Disconnect data
+        in: body
+        name: session
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateVpnSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VpnSessionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - VpnToken: []
+      summary: Disconnect VPN session
+      tags:
+      - vpn-auth
+  /api/v1/vpn-auth/users:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of all active users for VPN (used for firewall rules
+        generation)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              items:
+                $ref: '#/definitions/handlers.VpnUserResponse'
+              type: array
+            type: object
+      security:
+      - VpnToken: []
+      summary: List all active VPN users
+      tags:
+      - vpn-auth
+  /api/v1/vpn-auth/users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get user details by ID for VPN (called by OpenVPN scripts)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.VpnUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - VpnToken: []
+      summary: Get user by ID
+      tags:
+      - vpn-auth
+  /api/v1/vpn-auth/users/{id}/routes:
+    get:
+      consumes:
+      - application/json
+      description: Get network routes for a user based on their group memberships
+        (called by OpenVPN client-connect script)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.VpnUserRoutesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - VpnToken: []
+      summary: Get user routes
+      tags:
+      - vpn-auth
+  /api/v1/vpn-auth/users/by-username/{username}:
+    get:
+      consumes:
+      - application/json
+      description: Get user details by username for VPN (called by OpenVPN scripts)
+      parameters:
+      - description: Username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.VpnUserResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - VpnToken: []
+      summary: Get user by username
+      tags:
+      - vpn-auth
   /api/v1/vpn/sessions:
     get:
       consumes:
@@ -2506,5 +2785,10 @@ securityDefinitions:
       eyJhbGciOiJIUzI1NiIs..."'
     in: header
     name: Authorization
+    type: apiKey
+  VpnToken:
+    description: VPN server authentication token configured in API settings
+    in: header
+    name: X-VPN-Token
     type: apiKey
 swagger: "2.0"

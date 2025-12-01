@@ -48,6 +48,7 @@ type APIConfig struct {
 	Enabled           bool     `yaml:"enabled"`
 	SwaggerEnabled    bool     `yaml:"swagger_enabled"`
 	SwaggerAllowedIPs []string `yaml:"swagger_allowed_ips"` // CIDR notation: "0.0.0.0/0" for all, "192.168.1.0/24" for subnet
+	VpnToken          string   `yaml:"vpn_token"`           // Token for VPN server authentication (X-VPN-Token header)
 }
 
 // AuthConfig represents authentication configuration
@@ -185,6 +186,9 @@ func loadEnvOverrides(config *Config) {
 	}
 	if v := os.Getenv("API_SWAGGER_ALLOWED_IPS"); v != "" {
 		config.API.SwaggerAllowedIPs = strings.Split(v, ",")
+	}
+	if v := os.Getenv("API_VPN_TOKEN"); v != "" {
+		config.API.VpnToken = v
 	}
 
 	// Logging configuration

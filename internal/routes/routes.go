@@ -24,6 +24,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 	groupHandler := handlers.NewGroupHandler()
 	networkHandler := handlers.NewNetworkHandler()
 	vpnSessionHandler := handlers.NewVpnSessionHandler()
+	vpnAuthHandler := handlers.NewVpnAuthHandler()
 	auditHandler := handlers.NewAuditHandler()
 	webHandler := handlers.NewWebHandler()
 
@@ -150,6 +151,21 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 					audit.GET("/user/:user_id", auditHandler.GetByUser)
 					audit.GET("/:id", auditHandler.Get)
 				}
+			}
+		}
+
+		// VPN Auth routes (token-based authentication for OpenVPN server)
+		if cfg.API.VpnToken != "" {
+			vpnAuth := api.Group("/vpn-auth")
+			vpnAuth.Use(middleware.VpnTokenAuth(cfg.API.VpnToken))
+			{
+				vpnAuth.POST("/authenticate", vpnAuthHandler.Authenticate)
+				vpnAuth.GET("/users", vpnAuthHandler.ListAllUsers)
+				vpnAuth.GET("/users/:id", vpnAuthHandler.GetUserByID)
+				vpnAuth.GET("/users/:id/routes", vpnAuthHandler.GetUserRoutes)
+				vpnAuth.GET("/users/by-username/:username", vpnAuthHandler.GetUserByUsername)
+				vpnAuth.POST("/sessions", vpnAuthHandler.CreateSession)
+				vpnAuth.PUT("/sessions/:id/disconnect", vpnAuthHandler.DisconnectSession)
 			}
 		}
 

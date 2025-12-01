@@ -15,6 +15,11 @@
 // @in							header
 // @name						Authorization
 // @description				Type "Bearer" followed by a space and JWT token. Example: "Bearer eyJhbGciOiJIUzI1NiIs..."
+//
+// @securityDefinitions.apikey	VpnToken
+// @in							header
+// @name						X-VPN-Token
+// @description				VPN server authentication token configured in API settings
 
 package main
 
@@ -98,6 +103,9 @@ func main() {
 	// API status
 	if cfg.API.Enabled {
 		applogger.Info("REST API enabled", "path", "/api/v1")
+		if cfg.API.VpnToken != "" {
+			applogger.Info("VPN Auth API enabled", "path", "/api/v1/vpn-auth")
+		}
 		if cfg.API.SwaggerEnabled {
 			applogger.Info("Swagger UI enabled", "path", "/swagger/index.html")
 		}

@@ -124,3 +124,17 @@ func GetUserByID(id uuid.UUID) (*models.User, error) {
 	}
 	return &user, nil
 }
+
+// AuthenticateUser authenticates a user by username and password (for VPN without JWT)
+func AuthenticateUser(username, password string) (*models.User, error) {
+	var user models.User
+	if err := database.GetDB().Where("username = ?", username).First(&user).Error; err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	return &user, nil
+}

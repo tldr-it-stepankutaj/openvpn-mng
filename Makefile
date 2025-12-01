@@ -1,4 +1,4 @@
-.PHONY: build run clean test swagger deps
+.PHONY: all build run run-config clean test test-race test-services test-handlers test-middleware test-integration test-coverage test-coverage-html swagger deps tools docker-build docker-run help
 
 # Application name
 APP_NAME=openvpn-mng
@@ -41,12 +41,35 @@ run-config:
 
 # Run tests
 test:
-	$(GOTEST) -v ./...
+	$(GOTEST) -v ./test/...
 
-# Run tests with coverage
+# Run tests with race detection
+test-race:
+	$(GOTEST) -v -race ./test/...
+
+# Run specific test package
+test-services:
+	$(GOTEST) -v ./test/services/...
+
+test-handlers:
+	$(GOTEST) -v ./test/handlers/...
+
+test-middleware:
+	$(GOTEST) -v ./test/middleware/...
+
+test-integration:
+	$(GOTEST) -v ./test/integration/...
+
+# Run tests with coverage (tests in test/ folder)
 test-coverage:
-	$(GOTEST) -v -coverprofile=coverage.out ./...
+	$(GOTEST) -v ./test/... -coverprofile=coverage.out
+	$(GOCMD) tool cover -func=coverage.out
+
+# Run tests with coverage HTML report
+test-coverage-html:
+	$(GOTEST) -v ./test/... -coverprofile=coverage.out
 	$(GOCMD) tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
 
 # Generate Swagger documentation
 swagger:
@@ -72,14 +95,20 @@ docker-run:
 # Help
 help:
 	@echo "Available targets:"
-	@echo "  all          - Install dependencies and build"
-	@echo "  deps         - Download and tidy dependencies"
-	@echo "  build        - Build the application"
-	@echo "  run          - Run the application"
-	@echo "  test         - Run tests"
-	@echo "  test-coverage - Run tests with coverage report"
-	@echo "  swagger      - Generate Swagger documentation"
-	@echo "  clean        - Clean build artifacts"
-	@echo "  tools        - Install development tools"
-	@echo "  docker-build - Build Docker image"
-	@echo "  docker-run   - Run Docker container"
+	@echo "  all              - Install dependencies and build"
+	@echo "  deps             - Download and tidy dependencies"
+	@echo "  build            - Build the application"
+	@echo "  run              - Run the application"
+	@echo "  test             - Run all tests"
+	@echo "  test-race        - Run tests with race detection"
+	@echo "  test-services    - Run service tests only"
+	@echo "  test-handlers    - Run handler tests only"
+	@echo "  test-middleware  - Run middleware tests only"
+	@echo "  test-integration - Run integration tests only"
+	@echo "  test-coverage    - Run tests with coverage report"
+	@echo "  test-coverage-html - Run tests with HTML coverage report"
+	@echo "  swagger          - Generate Swagger documentation"
+	@echo "  clean            - Clean build artifacts"
+	@echo "  tools            - Install development tools"
+	@echo "  docker-build     - Build Docker image"
+	@echo "  docker-run       - Run Docker container"

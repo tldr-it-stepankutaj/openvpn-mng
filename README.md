@@ -154,9 +154,33 @@ GOOS=darwin GOARCH=arm64 go build -o openvpn-mng ./cmd/server
 | `/sessions` | VPN session history (Admin only) |
 | `/profile` | User profile |
 
+## Testing
+
+Run the test suite:
+
+```bash
+# Run all tests
+make test
+
+# Run with race detection
+make test-race
+
+# Run specific test categories
+make test-services      # Service layer tests
+make test-handlers      # HTTP handler tests
+make test-middleware    # Middleware tests
+make test-integration   # Integration tests
+
+# Generate coverage report
+make test-coverage-html
+```
+
+For detailed testing documentation, see **[Testing Guide](help/test.md)**.
+
 ## Documentation
 
 - **[API Documentation](help/api.md)** - Complete REST API reference with examples
+- **[Testing Guide](help/test.md)** - Test suite structure and usage
 - **Swagger UI** - Interactive API docs at `http://localhost:8080/swagger/index.html`
 
 ## Project Structure
@@ -174,12 +198,20 @@ openvpn-mng/
 │   ├── models/           # Database models
 │   ├── routes/           # Route definitions
 │   └── services/         # Business logic
+├── test/
+│   ├── testutil/         # Test utilities and helpers
+│   ├── services/         # Service layer tests
+│   ├── handlers/         # HTTP handler tests
+│   ├── middleware/       # Middleware tests
+│   ├── dto/              # DTO tests
+│   └── integration/      # Integration tests
 ├── web/
 │   ├── static/           # CSS, JS assets
 │   └── templates/        # HTML templates
 ├── docs/                 # Swagger generated docs
 ├── help/                 # Documentation
-│   └── api.md            # API documentation
+│   ├── api.md            # API documentation
+│   └── test.md           # Testing guide
 └── config.yaml           # Configuration file
 ```
 
@@ -210,15 +242,78 @@ openvpn-mng/
 7. **User validity** - Use `valid_from`/`valid_to` for temporary access
 8. **VPN API authentication** - Use dedicated service account for VPN server integration
 
-## Docker / Kubernetes
+## Docker
 
-For containerized deployments:
+### Quick Start with Docker Compose
+
+```bash
+# Start with PostgreSQL
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Stop
+docker-compose down
+```
+
+The application will be available at `http://localhost:8080`.
+
+### Environment Variables
+
+The application supports configuration via environment variables (useful for Docker/Kubernetes):
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SERVER_HOST` | Server bind address | `0.0.0.0` |
+| `SERVER_PORT` | Server port | `8080` |
+| `DB_TYPE` | Database type (`postgres` or `mysql`) | `postgres` |
+| `DB_HOST` | Database host | - |
+| `DB_PORT` | Database port | `5432` (postgres) / `3306` (mysql) |
+| `DB_USERNAME` | Database username | - |
+| `DB_PASSWORD` | Database password | - |
+| `DB_DATABASE` | Database name | - |
+| `DB_SSLMODE` | PostgreSQL SSL mode | `disable` |
+| `AUTH_JWT_SECRET` | JWT signing secret | - |
+| `AUTH_TOKEN_EXPIRY` | Token expiry in hours | `24` |
+| `AUTH_SESSION_EXPIRY` | Session expiry in hours | `8` |
+| `API_ENABLED` | Enable REST API | `true` |
+| `API_SWAGGER_ENABLED` | Enable Swagger UI | `true` |
+| `API_SWAGGER_ALLOWED_IPS` | Comma-separated CIDR list | - |
+| `LOG_OUTPUT` | Log output (`stdout`, `file`, `both`) | `stdout` |
+| `LOG_FORMAT` | Log format (`text`, `json`) | `text` |
+| `LOG_LEVEL` | Log level (`debug`, `info`, `warn`, `error`) | `info` |
+
+Environment variables override values from `config.yaml`.
+
+### Building Docker Image
+
+```bash
+# Build image
+docker build -t openvpn-mng:latest .
+
+# Run standalone (requires external database)
+docker run -p 8080:8080 \
+  -e DB_HOST=your-db-host \
+  -e DB_USERNAME=your-user \
+  -e DB_PASSWORD=your-password \
+  -e DB_DATABASE=openvpn_mng \
+  -e AUTH_JWT_SECRET=your-secret-key \
+  openvpn-mng:latest
+```
+
+### Kubernetes
+
+For Kubernetes deployments, use JSON logging format:
 
 ```yaml
-logging:
-  output: "stdout"
-  format: "json"
-  level: "info"
+env:
+  - name: LOG_OUTPUT
+    value: "stdout"
+  - name: LOG_FORMAT
+    value: "json"
+  - name: LOG_LEVEL
+    value: "info"
 ```
 
 ## License

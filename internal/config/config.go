@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -55,17 +57,27 @@ type AuthConfig struct {
 	SessionExpiry int    `yaml:"session_expiry"` // in hours
 }
 
-// Load loads configuration from a YAML file
+// Load loads configuration from a YAML file with environment variable overrides
 func Load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+	var config Config
+
+	// Try to load from YAML file first
+	if path != "" {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			// If file doesn't exist and we have env vars, continue with defaults
+			if !os.IsNotExist(err) {
+				return nil, fmt.Errorf("failed to read config file: %w", err)
+			}
+		} else {
+			if err := yaml.Unmarshal(data, &config); err != nil {
+				return nil, fmt.Errorf("failed to parse config file: %w", err)
+			}
+		}
 	}
 
-	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
-	}
+	// Override with environment variables
+	loadEnvOverrides(&config)
 
 	// Set defaults
 	if config.Server.Host == "" {
@@ -92,7 +104,102 @@ func Load(path string) (*Config, error) {
 		config.Logging.Level = "info"
 	}
 
+	// Database defaults
+	if config.Database.Type == "" {
+		config.Database.Type = "postgres"
+	}
+	if config.Database.Port == 0 {
+		if config.Database.Type == "mysql" {
+			config.Database.Port = 3306
+		} else {
+			config.Database.Port = 5432
+		}
+	}
+
 	return &config, nil
+}
+
+// LoadFromEnv loads configuration purely from environment variables
+func LoadFromEnv() (*Config, error) {
+	return Load("")
+}
+
+// loadEnvOverrides overrides config values with environment variables
+func loadEnvOverrides(config *Config) {
+	// Server configuration
+	if v := os.Getenv("SERVER_HOST"); v != "" {
+		config.Server.Host = v
+	}
+	if v := os.Getenv("SERVER_PORT"); v != "" {
+		if port, err := strconv.Atoi(v); err == nil {
+			config.Server.Port = port
+		}
+	}
+
+	// Database configuration
+	if v := os.Getenv("DB_TYPE"); v != "" {
+		config.Database.Type = v
+	}
+	if v := os.Getenv("DB_HOST"); v != "" {
+		config.Database.Host = v
+	}
+	if v := os.Getenv("DB_PORT"); v != "" {
+		if port, err := strconv.Atoi(v); err == nil {
+			config.Database.Port = port
+		}
+	}
+	if v := os.Getenv("DB_USERNAME"); v != "" {
+		config.Database.Username = v
+	}
+	if v := os.Getenv("DB_PASSWORD"); v != "" {
+		config.Database.Password = v
+	}
+	if v := os.Getenv("DB_DATABASE"); v != "" {
+		config.Database.Database = v
+	}
+	if v := os.Getenv("DB_SSLMODE"); v != "" {
+		config.Database.SSLMode = v
+	}
+
+	// Auth configuration
+	if v := os.Getenv("AUTH_JWT_SECRET"); v != "" {
+		config.Auth.JWTSecret = v
+	}
+	if v := os.Getenv("AUTH_TOKEN_EXPIRY"); v != "" {
+		if expiry, err := strconv.Atoi(v); err == nil {
+			config.Auth.TokenExpiry = expiry
+		}
+	}
+	if v := os.Getenv("AUTH_SESSION_EXPIRY"); v != "" {
+		if expiry, err := strconv.Atoi(v); err == nil {
+			config.Auth.SessionExpiry = expiry
+		}
+	}
+
+	// API configuration
+	if v := os.Getenv("API_ENABLED"); v != "" {
+		config.API.Enabled = strings.ToLower(v) == "true" || v == "1"
+	}
+	if v := os.Getenv("API_SWAGGER_ENABLED"); v != "" {
+		config.API.SwaggerEnabled = strings.ToLower(v) == "true" || v == "1"
+	}
+	if v := os.Getenv("API_SWAGGER_ALLOWED_IPS"); v != "" {
+		config.API.SwaggerAllowedIPs = strings.Split(v, ",")
+	}
+
+	// Logging configuration
+	if v := os.Getenv("LOG_OUTPUT"); v != "" {
+		config.Logging.Output = v
+	}
+	if v := os.Getenv("LOG_PATH"); v != "" {
+		config.Logging.Path = v
+	}
+	if v := os.Getenv("LOG_FORMAT"); v != "" {
+		config.Logging.Format = v
+	}
+	if v := os.Getenv("LOG_LEVEL"); v != "" {
+		config.Logging.Level = v
+	}
 }
 
 // GetDSN returns the database connection string

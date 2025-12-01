@@ -11,7 +11,7 @@ import (
 type Network struct {
 	ID          uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
 	Name        string         `gorm:"size:100;not null;uniqueIndex" json:"name"`
-	CIDR        string         `gorm:"size:50;not null" json:"cidr"` // e.g., "192.168.1.0/24" or "10.0.0.1/32"
+	CIDR        string         `gorm:"column:cidr;size:50;not null" json:"cidr"` // e.g., "192.168.1.0/24" or "10.0.0.1/32"
 	Description string         `gorm:"size:500" json:"description"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`

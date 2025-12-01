@@ -7,11 +7,34 @@ services:
       - "8080:8080"
     environment:
       - GIN_MODE=release
-    volumes:
-      - ./config.yaml.sample:/app/config.yaml.sample
+      # Server configuration
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      # Database configuration
+      - DB_TYPE=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=openvpn
+      - DB_PASSWORD=openvpn_password
+      - DB_DATABASE=openvpn_mng
+      - DB_SSLMODE=disable
+      # Auth configuration
+      - AUTH_JWT_SECRET=change-this-to-a-secure-random-string-in-production
+      - AUTH_TOKEN_EXPIRY=24
+      - AUTH_SESSION_EXPIRY=8
+      # API configuration
+      - API_ENABLED=true
+      - API_SWAGGER_ENABLED=true
+      # Logging configuration
+      - LOG_OUTPUT=stdout
+      - LOG_FORMAT=json
+      - LOG_LEVEL=info
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
+    networks:
+      - openvpn-network
 
   postgres:
     image: postgres:15-alpine
@@ -23,9 +46,16 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openvpn -d openvpn_mng"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
+    networks:
+      - openvpn-network
 
-  # Optional MySQL service (use one or the other)
+  # Optional MySQL service (comment out postgres and uncomment this)
   # mysql:
   #   image: mysql:8.0
   #   environment:
@@ -37,7 +67,18 @@ services:
   #     - "3306:3306"
   #   volumes:
   #     - mysql_data:/var/lib/mysql
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
   #   restart: unless-stopped
+  #   networks:
+  #     - openvpn-network
+
+networks:
+  openvpn-network:
+    driver: bridge
 
 volumes:
   postgres_data:

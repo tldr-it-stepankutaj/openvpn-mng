@@ -76,6 +76,11 @@ func GetDB() *gorm.DB {
 	return DB
 }
 
+// SetDB sets the database instance (used for testing)
+func SetDB(db *gorm.DB) {
+	DB = db
+}
+
 // Close closes the database connection
 func Close() error {
 	sqlDB, err := DB.DB()

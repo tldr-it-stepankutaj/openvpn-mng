@@ -86,7 +86,7 @@ nfpms:
     homepage: https://github.com/tldr-it-stepankutaj/openvpn-mng
     maintainer: Stepan Kutaj <stepan@tldr.cz>
     description: Web-based management system for OpenVPN users, groups, networks, and access control
-    license: MIT
+    license: Apache-2.0
     formats:
       - deb
       - rpm
@@ -184,7 +184,7 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.created: "{{ .Date }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
-      org.opencontainers.image.licenses: "MIT"
+      org.opencontainers.image.licenses: "Apache-2.0"
     extra_files:
       - web
       - config.yaml.example

@@ -2650,6 +2650,92 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/vpn/network-info": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get information about the VPN network configuration and usage",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vpn"
+                ],
+                "summary": "Get VPN network information",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/services.VPNNetworkInfo"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/vpn/next-ip": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the next available IP address in the VPN network range",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vpn"
+                ],
+                "summary": "Get next available VPN IP",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.NextVPNIPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/vpn/sessions": {
             "get": {
                 "security": [
@@ -3253,6 +3339,94 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/vpn/used-ips": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a list of all VPN IP addresses currently in use",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vpn"
+                ],
+                "summary": "Get used VPN IPs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UsedVPNIPsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/vpn/validate-ip": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Validate that an IP address is valid for use in the VPN network",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vpn"
+                ],
+                "summary": "Validate VPN IP",
+                "parameters": [
+                    {
+                        "description": "IP to validate",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ValidateVPNIPRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ValidateVPNIPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -3703,6 +3877,14 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.NextVPNIPResponse": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.SuccessResponse": {
             "type": "object",
             "properties": {
@@ -3866,6 +4048,17 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UsedVPNIPsResponse": {
+            "type": "object",
+            "properties": {
+                "ips": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "dto.UserGroupWithNetworks": {
             "type": "object",
             "properties": {
@@ -3976,6 +4169,31 @@ const docTemplate = `{
                 },
                 "vpn_ip": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.ValidateVPNIPRequest": {
+            "type": "object",
+            "required": [
+                "ip"
+            ],
+            "properties": {
+                "exclude_user_id": {
+                    "type": "string"
+                },
+                "ip": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ValidateVPNIPResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "valid": {
+                    "type": "boolean"
                 }
             }
         },
@@ -4264,6 +4482,26 @@ const docTemplate = `{
                 "RoleManager",
                 "RoleAdmin"
             ]
+        },
+        "services.VPNNetworkInfo": {
+            "type": "object",
+            "properties": {
+                "available_ips": {
+                    "type": "integer"
+                },
+                "network": {
+                    "type": "string"
+                },
+                "server_ip": {
+                    "type": "string"
+                },
+                "total_ips": {
+                    "type": "integer"
+                },
+                "used_ips": {
+                    "type": "integer"
+                }
+            }
         }
     },
     "securityDefinitions": {

@@ -1,0 +1,62 @@
+# Git
+.git
+.gitignore
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# CI/CD
+.github/
+.claude/
+
+# Documentation
+*.md
+!README.md
+help/
+marketing/
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Dependencies (will be downloaded during build)
+vendor/
+
+# Go workspace
+go.work
+go.work.sum
+
+# Config files (use environment variables or mount config)
+config.yaml
+.env
+
+# Docker
+Dockerfile*
+docker-compose*.yaml
+.dockerignore
+
+# GoReleaser
+.goreleaser.yaml
+
+# Packaging
+packaging/
+
+# Test files
+test/
+
+# Logs
+*.log

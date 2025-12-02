@@ -16,6 +16,13 @@ type Config struct {
 	API      APIConfig      `yaml:"api"`
 	Auth     AuthConfig     `yaml:"auth"`
 	Logging  LoggingConfig  `yaml:"logging"`
+	VPN      VPNConfig      `yaml:"vpn"`
+}
+
+// VPNConfig represents VPN network configuration
+type VPNConfig struct {
+	Network  string `yaml:"network"`   // CIDR notation, e.g., "10.8.0.0/24"
+	ServerIP string `yaml:"server_ip"` // Server IP (reserved), e.g., "10.8.0.1"
 }
 
 // LoggingConfig represents logging configuration
@@ -203,6 +210,14 @@ func loadEnvOverrides(config *Config) {
 	}
 	if v := os.Getenv("LOG_LEVEL"); v != "" {
 		config.Logging.Level = v
+	}
+
+	// VPN configuration
+	if v := os.Getenv("VPN_NETWORK"); v != "" {
+		config.VPN.Network = v
+	}
+	if v := os.Getenv("VPN_SERVER_IP"); v != "" {
+		config.VPN.ServerIP = v
 	}
 }
 

@@ -20,11 +20,12 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 
 	// Handlers
 	authHandler := handlers.NewAuthHandler(&cfg.Auth)
-	userHandler := handlers.NewUserHandler()
+	userHandler := handlers.NewUserHandler(&cfg.VPN)
 	groupHandler := handlers.NewGroupHandler()
 	networkHandler := handlers.NewNetworkHandler()
 	vpnSessionHandler := handlers.NewVpnSessionHandler()
 	vpnAuthHandler := handlers.NewVpnAuthHandler()
+	vpnIPHandler := handlers.NewVPNIPHandler(&cfg.VPN)
 	auditHandler := handlers.NewAuditHandler()
 	webHandler := handlers.NewWebHandler()
 
@@ -121,6 +122,12 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 				// VPN Sessions
 				vpn := protected.Group("/vpn")
 				{
+					// VPN IP allocation endpoints
+					vpn.GET("/next-ip", vpnIPHandler.GetNextAvailableIP)
+					vpn.GET("/network-info", vpnIPHandler.GetNetworkInfo)
+					vpn.POST("/validate-ip", vpnIPHandler.ValidateIP)
+					vpn.GET("/used-ips", vpnIPHandler.GetUsedIPs)
+
 					// Write endpoints - any authenticated user (VPN server calls these)
 					vpn.POST("/sessions", vpnSessionHandler.Create)
 					vpn.PUT("/sessions/:id/disconnect", vpnSessionHandler.Disconnect)

@@ -291,8 +291,14 @@
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="createVpnIP" class="form-label">Static VPN IP</label>
-                                <input type="text" class="form-control" id="createVpnIP" placeholder="e.g., 10.8.0.100">
-                                <small class="text-muted">Leave empty for dynamic IP</small>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="createVpnIP" readonly>
+                                    <button type="button" class="btn btn-outline-secondary" id="createVpnIPEditBtn" onclick="toggleVpnIPEdit('create')" title="Edit IP">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted" id="createVpnIPHelp">Next available IP (auto-assigned)</small>
+                                <div id="createVpnIPValidation" class="invalid-feedback"></div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="createValidFrom" class="form-label">Valid From</label>
@@ -389,8 +395,14 @@
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <label for="editVpnIP" class="form-label">Static VPN IP</label>
-                                <input type="text" class="form-control" id="editVpnIP" placeholder="e.g., 10.8.0.100">
-                                <small class="text-muted">Leave empty for dynamic IP</small>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="editVpnIP" readonly>
+                                    <button type="button" class="btn btn-outline-secondary" id="editVpnIPEditBtn" onclick="toggleVpnIPEdit('edit')" title="Edit IP">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted" id="editVpnIPHelp">Current assigned IP</small>
+                                <div id="editVpnIPValidation" class="invalid-feedback"></div>
                             </div>
                             <div class="col-md-4 mb-3">
                                 <label for="editValidFrom" class="form-label">Valid From</label>
@@ -494,12 +506,131 @@
     <script>
         let currentViewUserId = null;
         let allGroups = [];
+        let nextAvailableIP = '';
+        let vpnNetworkConfigured = false;
 
         // Load user groups on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadAllGroups();
             loadAllUserGroups();
+            loadNextAvailableIP();
+
+            // Load next IP when create modal is opened
+            document.getElementById('createUserModal').addEventListener('show.bs.modal', function() {
+                loadNextAvailableIP();
+                resetVpnIPField('create');
+            });
         });
+
+        async function loadNextAvailableIP() {
+            try {
+                const response = await fetch('/api/v1/vpn/next-ip');
+                if (response.ok) {
+                    const data = await response.json();
+                    nextAvailableIP = data.ip;
+                    vpnNetworkConfigured = true;
+                    document.getElementById('createVpnIP').value = nextAvailableIP;
+                    document.getElementById('createVpnIPHelp').textContent = 'Next available IP (auto-assigned)';
+                } else {
+                    vpnNetworkConfigured = false;
+                    document.getElementById('createVpnIP').value = '';
+                    document.getElementById('createVpnIP').placeholder = 'VPN network not configured';
+                    document.getElementById('createVpnIPHelp').textContent = 'Configure VPN network in config.yaml';
+                }
+            } catch (error) {
+                console.error('Failed to load next available IP:', error);
+                vpnNetworkConfigured = false;
+            }
+        }
+
+        function toggleVpnIPEdit(mode) {
+            const input = document.getElementById(mode + 'VpnIP');
+            const btn = document.getElementById(mode + 'VpnIPEditBtn');
+            const help = document.getElementById(mode + 'VpnIPHelp');
+
+            if (input.readOnly) {
+                input.readOnly = false;
+                input.classList.add('border-warning');
+                btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-outline-success');
+                help.textContent = 'Enter custom IP or leave for auto-assign';
+            } else {
+                input.readOnly = true;
+                input.classList.remove('border-warning');
+                btn.innerHTML = '<i class="bi bi-pencil"></i>';
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-outline-secondary');
+
+                // Validate the IP if changed
+                if (input.value && vpnNetworkConfigured) {
+                    validateVpnIP(mode);
+                }
+
+                if (mode === 'create') {
+                    help.textContent = input.value ? 'Custom IP set' : 'Next available IP (auto-assigned)';
+                } else {
+                    help.textContent = input.value ? 'Current assigned IP' : 'No IP assigned';
+                }
+            }
+        }
+
+        function resetVpnIPField(mode) {
+            const input = document.getElementById(mode + 'VpnIP');
+            const btn = document.getElementById(mode + 'VpnIPEditBtn');
+            const help = document.getElementById(mode + 'VpnIPHelp');
+            const validation = document.getElementById(mode + 'VpnIPValidation');
+
+            input.readOnly = true;
+            input.classList.remove('border-warning', 'is-invalid');
+            btn.innerHTML = '<i class="bi bi-pencil"></i>';
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-outline-secondary');
+            validation.textContent = '';
+
+            if (mode === 'create' && nextAvailableIP) {
+                input.value = nextAvailableIP;
+                help.textContent = 'Next available IP (auto-assigned)';
+            }
+        }
+
+        async function validateVpnIP(mode, excludeUserId = '') {
+            const input = document.getElementById(mode + 'VpnIP');
+            const validation = document.getElementById(mode + 'VpnIPValidation');
+
+            if (!input.value) {
+                input.classList.remove('is-invalid');
+                validation.textContent = '';
+                return true;
+            }
+
+            try {
+                const response = await fetch('/api/v1/vpn/validate-ip', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ip: input.value,
+                        exclude_user_id: excludeUserId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.valid) {
+                    input.classList.remove('is-invalid');
+                    validation.textContent = '';
+                    return true;
+                } else {
+                    input.classList.add('is-invalid');
+                    validation.textContent = data.message;
+                    validation.style.display = 'block';
+                    return false;
+                }
+            } catch (error) {
+                console.error('Failed to validate IP:', error);
+                return true; // Allow submission on error
+            }
+        }
 
         async function loadAllGroups() {
             try {
@@ -844,9 +975,23 @@
                 document.getElementById('editTelephone').value = user.telephone || '';
                 document.getElementById('editRole').value = user.role;
                 document.getElementById('editIsActive').value = user.is_active ? 'true' : 'false';
-                document.getElementById('editVpnIP').value = user.vpn_ip || '';
                 document.getElementById('editValidFrom').value = user.valid_from ? user.valid_from.substring(0, 10) : '';
                 document.getElementById('editValidTo').value = user.valid_to ? user.valid_to.substring(0, 10) : '';
+
+                // Reset VPN IP field
+                const vpnIPInput = document.getElementById('editVpnIP');
+                const vpnIPHelp = document.getElementById('editVpnIPHelp');
+                const vpnIPBtn = document.getElementById('editVpnIPEditBtn');
+                const vpnIPValidation = document.getElementById('editVpnIPValidation');
+
+                vpnIPInput.value = user.vpn_ip || '';
+                vpnIPInput.readOnly = true;
+                vpnIPInput.classList.remove('border-warning', 'is-invalid');
+                vpnIPBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+                vpnIPBtn.classList.remove('btn-outline-success');
+                vpnIPBtn.classList.add('btn-outline-secondary');
+                vpnIPValidation.textContent = '';
+                vpnIPHelp.textContent = user.vpn_ip ? 'Current assigned IP' : 'No IP assigned';
 
                 modal.show();
             } catch (error) {

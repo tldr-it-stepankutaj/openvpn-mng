@@ -6,6 +6,8 @@ A web-based management system for OpenVPN users, groups, networks, and access co
 [![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/tldr-it-stepankutaj/openvpn-mng)](go.mod)
 
+![Admin Dashboard](help/images/admin_dashboard.png)
+
 ## Features
 
 - **User Management**: Create, update, delete users with role-based access control
@@ -138,6 +140,78 @@ See **[Installation Guide](help/install.md)** for complete environment variable 
 | `/audit` | Audit logs (Admin only) |
 | `/sessions` | VPN session history (Admin only) |
 | `/profile` | User profile |
+
+### Screenshots
+
+<details>
+<summary><strong>Login Page</strong></summary>
+
+![Login](help/images/login.png)
+
+</details>
+
+<details>
+<summary><strong>Admin View</strong></summary>
+
+**Dashboard**
+![Admin Dashboard](help/images/admin_dashboard.png)
+
+**User Management**
+![Admin Users](help/images/admin_users.png)
+
+**User Detail**
+![Admin User Detail](help/images/admin_user_detail.png)
+
+**User Edit**
+![Admin User Edit](help/images/admin_user_edit.png)
+
+**Group Management**
+![Admin Groups](help/images/admin_groups.png)
+
+**Group Detail**
+![Admin Group Detail](help/images/admin_group_detail.png)
+
+**Network Management**
+![Admin Networks](help/images/admin_networks.png)
+
+**Network Detail**
+![Admin Network Detail](help/images/admin_network_detail.png)
+
+**Audit Logs**
+![Admin Audit](help/images/admin_audit.png)
+
+**VPN Session History**
+![Admin History](help/images/admin_history.png)
+
+</details>
+
+<details>
+<summary><strong>Manager View</strong></summary>
+
+**Dashboard**
+![Manager Dashboard](help/images/manager_dashboard.png)
+
+**User Management**
+![Manager Users](help/images/manager_users.png)
+
+**Group View**
+![Manager Groups](help/images/manager_groups.png)
+
+**Profile**
+![Manager Profile](help/images/manager_profile.png)
+
+</details>
+
+<details>
+<summary><strong>User View</strong></summary>
+
+**Dashboard**
+![User Dashboard](help/images/user_dashboard.png)
+
+**Profile**
+![User Profile](help/images/user_profile.png)
+
+</details>
 
 ## VPN Auth API
 

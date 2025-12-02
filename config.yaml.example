@@ -41,3 +41,10 @@ logging:
   path: ""              # Directory for log files (empty = current directory)
   format: "text"        # "text" (default) or "json" (recommended for log aggregators)
   level: "info"         # "debug", "info", "warn", "error"
+
+vpn:
+  # VPN network configuration (matches OpenVPN server config)
+  # Example: if OpenVPN has "server 10.90.90.0 255.255.255.0", use "10.90.90.0/24"
+  network: "10.8.0.0/24"
+  # Server IP (first usable IP in the network, reserved for OpenVPN server)
+  server_ip: "10.8.0.1"

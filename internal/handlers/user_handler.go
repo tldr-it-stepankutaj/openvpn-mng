@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/config"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/dto"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/middleware"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/models"
@@ -16,14 +17,16 @@ import (
 type UserHandler struct {
 	userService  *services.UserService
 	groupService *services.GroupService
+	vpnIPService *services.VPNIPService
 	auditLogger  *middleware.AuditLogger
 }
 
 // NewUserHandler creates a new user handler
-func NewUserHandler() *UserHandler {
+func NewUserHandler(vpnCfg *config.VPNConfig) *UserHandler {
 	return &UserHandler{
 		userService:  services.NewUserService(),
 		groupService: services.NewGroupService(),
+		vpnIPService: services.NewVPNIPService(vpnCfg),
 		auditLogger:  middleware.NewAuditLogger(),
 	}
 }
@@ -67,6 +70,33 @@ func (h *UserHandler) Create(c *gin.Context) {
 				Code:    http.StatusForbidden,
 			})
 			return
+		}
+	}
+
+	// Handle VPN IP: validate if provided, auto-assign if empty
+	if req.VpnIP != "" {
+		// Validate provided IP
+		if err := h.vpnIPService.ValidateIP(req.VpnIP); err != nil {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+				Error:   "Bad Request",
+				Message: "VPN IP error: " + err.Error(),
+				Code:    http.StatusBadRequest,
+			})
+			return
+		}
+	} else {
+		// Auto-assign next available IP
+		nextIP, err := h.vpnIPService.GetNextAvailableIP()
+		if err != nil && err != services.ErrVPNNetworkNotConfigured {
+			c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+				Error:   "Internal Server Error",
+				Message: "Failed to allocate VPN IP: " + err.Error(),
+				Code:    http.StatusInternalServerError,
+			})
+			return
+		}
+		if nextIP != "" {
+			req.VpnIP = nextIP
 		}
 	}
 
@@ -243,6 +273,18 @@ func (h *UserHandler) Update(c *gin.Context) {
 				Error:   "Forbidden",
 				Message: "Cannot reassign user to another manager",
 				Code:    http.StatusForbidden,
+			})
+			return
+		}
+	}
+
+	// Validate VPN IP if provided
+	if req.VpnIP != nil && *req.VpnIP != "" {
+		if err := h.vpnIPService.ValidateIP(*req.VpnIP, id.String()); err != nil {
+			c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+				Error:   "Bad Request",
+				Message: "VPN IP error: " + err.Error(),
+				Code:    http.StatusBadRequest,
 			})
 			return
 		}

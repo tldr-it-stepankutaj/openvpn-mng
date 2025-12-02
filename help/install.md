@@ -2,6 +2,8 @@
 
 This guide covers all installation methods for OpenVPN Manager.
 
+![Login Page](images/login.png)
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -510,6 +512,10 @@ curl http://localhost:8080/api/v1/auth/me
 
 **Important:** Change the default password immediately after first login!
 
+After login, you'll see the admin dashboard:
+
+![Admin Dashboard](images/admin_dashboard.png)
+
 ---
 
 ## Upgrading
@@ -680,5 +686,27 @@ After installation:
 1. [Configure users and groups](api.md)
 2. [Set up OpenVPN integration](client.md)
 3. [Configure networks and access control](api.md#networks)
+
+### User Management
+
+Create and manage users from the Users page:
+
+![User Management](images/admin_users.png)
+
+Edit user details including VPN IP assignment:
+
+![User Edit](images/admin_user_edit.png)
+
+### Group Management
+
+Organize users into groups:
+
+![Group Management](images/admin_groups.png)
+
+### Network Management
+
+Define network segments and assign them to groups:
+
+![Network Management](images/admin_networks.png)
 
 For more information, see the [API Documentation](api.md) and [Client Integration Guide](client.md).

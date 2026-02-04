@@ -26,6 +26,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 	vpnSessionHandler := handlers.NewVpnSessionHandler()
 	vpnAuthHandler := handlers.NewVpnAuthHandler()
 	vpnIPHandler := handlers.NewVPNIPHandler(&cfg.VPN)
+	vpnClientConfigHandler := handlers.NewVpnClientConfigHandler()
 	auditHandler := handlers.NewAuditHandler()
 	webHandler := handlers.NewWebHandler()
 
@@ -48,6 +49,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 			protected.GET("/audit", webHandler.AuditPage)
 			protected.GET("/sessions", webHandler.SessionsPage)
 			protected.GET("/profile", webHandler.ProfilePage)
+			protected.GET("/vpn-settings", webHandler.VpnSettingsPage)
 		}
 	}
 
@@ -128,6 +130,9 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 					vpn.POST("/validate-ip", vpnIPHandler.ValidateIP)
 					vpn.GET("/used-ips", vpnIPHandler.GetUsedIPs)
 
+					// VPN Client Config - Download available to any authenticated user
+					vpn.GET("/client-config/download", vpnClientConfigHandler.Download)
+
 					// Write endpoints - any authenticated user (VPN server calls these)
 					vpn.POST("/sessions", vpnSessionHandler.Create)
 					vpn.PUT("/sessions/:id/disconnect", vpnSessionHandler.Disconnect)
@@ -143,6 +148,12 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 						vpnAdmin.GET("/stats", vpnSessionHandler.GetStats)
 						vpnAdmin.GET("/stats/users", vpnSessionHandler.GetUserStats)
 						vpnAdmin.GET("/traffic-stats", vpnSessionHandler.ListTrafficStats)
+
+						// VPN Client Config management - Admin only
+						vpnAdmin.GET("/client-config", vpnClientConfigHandler.Get)
+						vpnAdmin.PUT("/client-config", vpnClientConfigHandler.Update)
+						vpnAdmin.GET("/client-config/preview", vpnClientConfigHandler.Preview)
+						vpnAdmin.GET("/client-config/default-template", vpnClientConfigHandler.GetDefaultTemplate)
 					}
 				}
 

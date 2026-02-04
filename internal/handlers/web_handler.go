@@ -11,19 +11,21 @@ import (
 
 // WebHandler handles web page requests
 type WebHandler struct {
-	userService      *services.UserService
-	groupService     *services.GroupService
-	networkService   *services.NetworkService
-	dashboardService *services.DashboardService
+	userService            *services.UserService
+	groupService           *services.GroupService
+	networkService         *services.NetworkService
+	dashboardService       *services.DashboardService
+	vpnClientConfigService *services.VpnClientConfigService
 }
 
 // NewWebHandler creates a new web handler
 func NewWebHandler() *WebHandler {
 	return &WebHandler{
-		userService:      services.NewUserService(),
-		groupService:     services.NewGroupService(),
-		networkService:   services.NewNetworkService(),
-		dashboardService: services.NewDashboardService(),
+		userService:            services.NewUserService(),
+		groupService:           services.NewGroupService(),
+		networkService:         services.NewNetworkService(),
+		dashboardService:       services.NewDashboardService(),
+		vpnClientConfigService: services.NewVpnClientConfigService(),
 	}
 }
 
@@ -217,5 +219,32 @@ func (h *WebHandler) SessionsPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "sessions.html", gin.H{
 		"title": "VPN Session History - OpenVPN Manager",
 		"role":  authUser.Role,
+	})
+}
+
+// VpnSettingsPage renders the VPN settings page (ADMIN only)
+func (h *WebHandler) VpnSettingsPage(c *gin.Context) {
+	authUser := middleware.GetAuthUser(c)
+
+	// Only ADMIN can access VPN settings
+	if authUser.Role != models.RoleAdmin {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"title":   "Access Denied - OpenVPN Manager",
+			"message": "You don't have permission to access this page",
+		})
+		return
+	}
+
+	// Get current config if exists
+	config, _ := h.vpnClientConfigService.Get()
+
+	// Get default template
+	defaultTemplate := h.vpnClientConfigService.GetDefaultTemplate()
+
+	c.HTML(http.StatusOK, "vpn_settings.html", gin.H{
+		"title":           "VPN Settings - OpenVPN Manager",
+		"role":            authUser.Role,
+		"config":          config,
+		"defaultTemplate": defaultTemplate,
 	})
 }

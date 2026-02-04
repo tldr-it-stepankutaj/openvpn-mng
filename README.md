@@ -16,6 +16,7 @@ A web-based management system for OpenVPN users, groups, networks, and access co
 - **Group Management**: Organize users into groups (IT, HR, Finance, etc.)
 - **Network Management**: Define network segments (IP/CIDR) and assign them to groups
 - **VPN Session Tracking**: Monitor active connections, traffic statistics, and usage history
+- **VPN Client Config**: Generate and download .ovpn configuration files for users
 - **Role-Based Access Control (RBAC)**:
   - `USER` - Can only view and edit their own profile
   - `MANAGER` - Can create and manage users assigned to them
@@ -139,6 +140,7 @@ See **[Installation Guide](help/install.md)** for complete environment variable 
 | `/networks` | Network management (Admin only) |
 | `/audit` | Audit logs (Admin only) |
 | `/sessions` | VPN session history (Admin only) |
+| `/vpn-settings` | VPN client config settings (Admin only) |
 | `/profile` | User profile |
 
 ### Screenshots
@@ -229,6 +231,21 @@ The VPN Auth API provides dedicated endpoints for OpenVPN server integration usi
 
 All endpoints require the `X-VPN-Token` header. See **[Client Integration Guide](help/client.md)** for complete documentation.
 
+## VPN Client Configuration
+
+Users can download OpenVPN client configuration files (.ovpn) directly from the web interface:
+
+- **Dashboard/Profile**: Download button available for all authenticated users
+- **VPN Settings** (Admin only): Configure server address, port, protocol, CA certificate, TLS key, and template
+
+| Endpoint | Method | Access | Description |
+|----------|--------|--------|-------------|
+| `/api/v1/vpn/client-config` | GET | Admin | Get current configuration |
+| `/api/v1/vpn/client-config` | PUT | Admin | Create/update configuration |
+| `/api/v1/vpn/client-config/preview` | GET | Admin | Preview generated .ovpn |
+| `/api/v1/vpn/client-config/download` | GET | Auth | Download .ovpn file |
+| `/api/v1/vpn/client-config/default-template` | GET | Admin | Get default template |
+
 ## Documentation
 
 - **[Installation Guide](help/install.md)** - Complete installation instructions (DEB, RPM, Docker, Source)
@@ -281,6 +298,7 @@ See `make help` for all available targets.
 - **networks** - Network definitions (CIDR ranges)
 - **vpn_sessions** - VPN connection history
 - **vpn_traffic_stats** - Traffic statistics
+- **vpn_client_configs** - VPN client configuration (single-row)
 - **audit_logs** - Audit trail
 
 ### Junction Tables

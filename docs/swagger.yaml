@@ -185,6 +185,11 @@ definitions:
       time.Time:
         type: string
     type: object
+  dto.DefaultTemplateResponse:
+    properties:
+      template:
+        type: string
+    type: object
   dto.ErrorResponse:
     properties:
       code:
@@ -517,6 +522,77 @@ definitions:
         type: string
       valid:
         type: boolean
+    type: object
+  dto.VpnClientConfigPreviewResponse:
+    properties:
+      content:
+        type: string
+      filename:
+        type: string
+    type: object
+  dto.VpnClientConfigRequest:
+    properties:
+      ca_cert:
+        type: string
+      config_name:
+        maxLength: 100
+        minLength: 1
+        type: string
+      protocol:
+        enum:
+        - udp
+        - tcp
+        type: string
+      server_address:
+        maxLength: 255
+        minLength: 1
+        type: string
+      server_port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      template:
+        type: string
+      tls_key:
+        type: string
+      tls_key_direction:
+        maximum: 1
+        minimum: 0
+        type: integer
+    required:
+    - ca_cert
+    - config_name
+    - protocol
+    - server_address
+    - server_port
+    - template
+    type: object
+  dto.VpnClientConfigResponse:
+    properties:
+      ca_cert:
+        type: string
+      config_name:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      protocol:
+        type: string
+      server_address:
+        type: string
+      server_port:
+        type: integer
+      template:
+        type: string
+      tls_key:
+        type: string
+      tls_key_direction:
+        type: integer
+      updated_at:
+        type: string
+      updated_by:
+        type: string
     type: object
   dto.VpnSessionListResponse:
     properties:
@@ -2431,6 +2507,142 @@ paths:
       summary: Get user by username
       tags:
       - vpn-auth
+  /api/v1/vpn/client-config:
+    get:
+      description: Get the current VPN client configuration (Admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VpnClientConfigResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get VPN client configuration
+      tags:
+      - vpn-client-config
+    put:
+      consumes:
+      - application/json
+      description: Create or update the VPN client configuration (Admin only)
+      parameters:
+      - description: VPN client configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VpnClientConfigRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VpnClientConfigResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create or update VPN client configuration
+      tags:
+      - vpn-client-config
+  /api/v1/vpn/client-config/default-template:
+    get:
+      description: Get the default template for OpenVPN client configuration (Admin
+        only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.DefaultTemplateResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get default OpenVPN client template
+      tags:
+      - vpn-client-config
+  /api/v1/vpn/client-config/download:
+    get:
+      description: Download the generated .ovpn file (Any authenticated user)
+      produces:
+      - application/x-openvpn-profile
+      responses:
+        "200":
+          description: OpenVPN configuration file
+          schema:
+            type: file
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Download .ovpn configuration file
+      tags:
+      - vpn-client-config
+  /api/v1/vpn/client-config/preview:
+    get:
+      description: Preview the generated .ovpn file content (Admin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VpnClientConfigPreviewResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview generated .ovpn configuration
+      tags:
+      - vpn-client-config
   /api/v1/vpn/network-info:
     get:
       description: Get information about the VPN network configuration and usage

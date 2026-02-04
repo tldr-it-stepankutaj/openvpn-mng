@@ -11,6 +11,7 @@ Complete REST API documentation for OpenVPN Manager. All endpoints require authe
 - [Group Networks Management](#group-networks-management)
 - [Networks](#networks)
 - [VPN Sessions](#vpn-sessions)
+- [VPN Client Configuration](#vpn-client-configuration)
 - [Audit Logs](#audit-logs)
 - [Error Responses](#error-responses)
 - [OpenVPN Integration](#openvpn-integration)
@@ -950,6 +951,134 @@ Get detailed traffic statistics entries.
 | `session_id` | UUID | Filter by session |
 | `from` | datetime | Stats from this time |
 | `to` | datetime | Stats until this time |
+
+---
+
+## VPN Client Configuration
+
+Manage the global OpenVPN client configuration (.ovpn file) that users can download.
+
+### Get Configuration
+
+**GET** `/api/v1/vpn/client-config`
+
+Get the current VPN client configuration. Requires `ADMIN` role.
+
+**Response (200 OK):**
+```json
+{
+  "id": "00000000-0000-0000-0000-000000000001",
+  "server_address": "vpn.example.com",
+  "server_port": 1194,
+  "protocol": "udp",
+  "ca_cert": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+  "tls_key": "-----BEGIN OpenVPN Static key V1-----\n...\n-----END OpenVPN Static key V1-----",
+  "tls_key_direction": 1,
+  "template": "client\ndev tun\nproto {{PROTOCOL}}\n...",
+  "config_name": "client",
+  "created_at": "2025-12-01T08:00:00Z",
+  "updated_at": "2025-12-01T10:00:00Z",
+  "updated_by": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Configuration not set up yet
+
+---
+
+### Create/Update Configuration
+
+**PUT** `/api/v1/vpn/client-config`
+
+Create or update the VPN client configuration. Requires `ADMIN` role.
+
+**Request Body:**
+```json
+{
+  "server_address": "vpn.example.com",
+  "server_port": 1194,
+  "protocol": "udp",
+  "ca_cert": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+  "tls_key": "-----BEGIN OpenVPN Static key V1-----\n...\n-----END OpenVPN Static key V1-----",
+  "tls_key_direction": 1,
+  "template": "client\ndev tun\nproto {{PROTOCOL}}\n...",
+  "config_name": "client"
+}
+```
+
+**Field Descriptions:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `server_address` | string | Yes | VPN server hostname or IP address |
+| `server_port` | int | Yes | VPN server port (1-65535) |
+| `protocol` | string | Yes | Protocol: `udp` or `tcp` |
+| `ca_cert` | string | Yes | CA certificate in PEM format |
+| `tls_key` | string | No | TLS auth key (ta.key) in PEM format |
+| `tls_key_direction` | int | No | TLS key direction: 0 or 1 (default: 1) |
+| `template` | string | Yes | OpenVPN config template |
+| `config_name` | string | Yes | Filename without extension (e.g., "client" → client.ovpn) |
+
+**Template Placeholders:**
+- `{{SERVER_ADDRESS}}` - Server hostname/IP
+- `{{SERVER_PORT}}` - Server port
+- `{{PROTOCOL}}` - Protocol (udp/tcp)
+- `{{CA_CERT}}` - CA certificate content
+- `{{TLS_KEY}}` - TLS key content
+- `{{TLS_KEY_DIRECTION}}` - TLS key direction
+- `{{#TLS_KEY}}...{{/TLS_KEY}}` - Conditional section (included only if TLS key is set)
+
+**Response (200 OK):** Updated configuration object
+
+**Error Responses:**
+- `400 Bad Request` - Invalid CA certificate or TLS key format
+
+---
+
+### Preview Configuration
+
+**GET** `/api/v1/vpn/client-config/preview`
+
+Preview the generated .ovpn file content. Requires `ADMIN` role.
+
+**Response (200 OK):**
+```json
+{
+  "content": "client\ndev tun\nproto udp\nremote vpn.example.com 1194\n...",
+  "filename": "client.ovpn"
+}
+```
+
+---
+
+### Download Configuration
+
+**GET** `/api/v1/vpn/client-config/download`
+
+Download the generated .ovpn file. Available to any authenticated user.
+
+**Response (200 OK):**
+- Content-Type: `application/x-openvpn-profile`
+- Content-Disposition: `attachment; filename=client.ovpn`
+- Body: OpenVPN configuration file content
+
+**Error Responses:**
+- `404 Not Found` - Configuration not available (admin hasn't configured it yet)
+
+---
+
+### Get Default Template
+
+**GET** `/api/v1/vpn/client-config/default-template`
+
+Get the default OpenVPN client configuration template. Requires `ADMIN` role.
+
+**Response (200 OK):**
+```json
+{
+  "template": "client\ndev tun\nproto {{PROTOCOL}}\nremote {{SERVER_ADDRESS}} {{SERVER_PORT}}\n..."
+}
+```
 
 ---
 

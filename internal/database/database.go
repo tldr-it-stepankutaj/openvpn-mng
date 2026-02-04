@@ -58,6 +58,7 @@ func Migrate() error {
 		{"audit_logs", &models.AuditLog{}},
 		{"vpn_sessions", &models.VpnSession{}},
 		{"vpn_traffic_stats", &models.VpnTrafficStats{}},
+		{"vpn_client_configs", &models.VpnClientConfig{}},
 	}
 
 	for _, t := range tables {

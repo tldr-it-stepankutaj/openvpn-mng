@@ -2650,6 +2650,221 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/vpn/client-config": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the current VPN client configuration (Admin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vpn-client-config"
+                ],
+                "summary": "Get VPN client configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.VpnClientConfigResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create or update the VPN client configuration (Admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vpn-client-config"
+                ],
+                "summary": "Create or update VPN client configuration",
+                "parameters": [
+                    {
+                        "description": "VPN client configuration",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.VpnClientConfigRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.VpnClientConfigResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/vpn/client-config/default-template": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the default template for OpenVPN client configuration (Admin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vpn-client-config"
+                ],
+                "summary": "Get default OpenVPN client template",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DefaultTemplateResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/vpn/client-config/download": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Download the generated .ovpn file (Any authenticated user)",
+                "produces": [
+                    "application/x-openvpn-profile"
+                ],
+                "tags": [
+                    "vpn-client-config"
+                ],
+                "summary": "Download .ovpn configuration file",
+                "responses": {
+                    "200": {
+                        "description": "OpenVPN configuration file",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/vpn/client-config/preview": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Preview the generated .ovpn file content (Admin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vpn-client-config"
+                ],
+                "summary": "Preview generated .ovpn configuration",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.VpnClientConfigPreviewResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/vpn/network-info": {
             "get": {
                 "security": [
@@ -3701,6 +3916,14 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.DefaultTemplateResponse": {
+            "type": "object",
+            "properties": {
+                "template": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -4194,6 +4417,107 @@ const docTemplate = `{
                 },
                 "valid": {
                     "type": "boolean"
+                }
+            }
+        },
+        "dto.VpnClientConfigPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.VpnClientConfigRequest": {
+            "type": "object",
+            "required": [
+                "ca_cert",
+                "config_name",
+                "protocol",
+                "server_address",
+                "server_port",
+                "template"
+            ],
+            "properties": {
+                "ca_cert": {
+                    "type": "string"
+                },
+                "config_name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                },
+                "protocol": {
+                    "type": "string",
+                    "enum": [
+                        "udp",
+                        "tcp"
+                    ]
+                },
+                "server_address": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "server_port": {
+                    "type": "integer",
+                    "maximum": 65535,
+                    "minimum": 1
+                },
+                "template": {
+                    "type": "string"
+                },
+                "tls_key": {
+                    "type": "string"
+                },
+                "tls_key_direction": {
+                    "type": "integer",
+                    "maximum": 1,
+                    "minimum": 0
+                }
+            }
+        },
+        "dto.VpnClientConfigResponse": {
+            "type": "object",
+            "properties": {
+                "ca_cert": {
+                    "type": "string"
+                },
+                "config_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "server_address": {
+                    "type": "string"
+                },
+                "server_port": {
+                    "type": "integer"
+                },
+                "template": {
+                    "type": "string"
+                },
+                "tls_key": {
+                    "type": "string"
+                },
+                "tls_key_direction": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
                 }
             }
         },

@@ -55,6 +55,11 @@
                             <i class="bi bi-clock-history me-1"></i>History
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/vpn-settings">
+                            <i class="bi bi-gear me-1"></i>VPN Settings
+                        </a>
+                    </li>
                     {{end}}
                 </ul>
                 <ul class="navbar-nav">
@@ -390,7 +395,7 @@
                         <p class="mb-0">{{.user.Email}}</p>
                     </div>
                 </div>
-                <div class="card">
+                <div class="card mb-4">
                     <div class="card-header">
                         <i class="bi bi-shield-check me-2"></i>Account Status
                     </div>
@@ -406,6 +411,17 @@
                         <p class="mb-0 text-muted small">
                             Member since: {{.user.CreatedAt.Format "Jan 2, 2006"}}
                         </p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-download me-2"></i>VPN Configuration
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-3">Download the OpenVPN configuration file to connect to the VPN.</p>
+                        <a href="/api/v1/vpn/client-config/download" class="btn btn-success w-100">
+                            <i class="bi bi-download me-2"></i>Download .ovpn
+                        </a>
                     </div>
                 </div>
             </div>

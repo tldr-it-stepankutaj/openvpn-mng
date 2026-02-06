@@ -98,7 +98,7 @@ Supported: Debian 11+, Ubuntu 20.04+
 
 ```bash
 # Download latest release (replace VERSION with actual version)
-VERSION="1.0.0"
+VERSION="1.1.0"
 wget https://github.com/tldr-it-stepankutaj/openvpn-mng/releases/download/v${VERSION}/openvpn-mng_${VERSION}_linux_amd64.deb
 
 # Verify checksum (recommended)
@@ -140,7 +140,7 @@ Supported: RHEL 8+, AlmaLinux 8+, Rocky Linux 8+, Fedora 38+
 
 ```bash
 # Download latest release
-VERSION="1.0.0"
+VERSION="1.1.0"
 wget https://github.com/tldr-it-stepankutaj/openvpn-mng/releases/download/v${VERSION}/openvpn-mng_${VERSION}_linux_amd64.rpm
 
 # Verify checksum (recommended)
@@ -172,7 +172,7 @@ sudo dnf install ./openvpn-mng_${VERSION}_linux_arm64.rpm
 docker pull tldr/openvpn-mng:latest
 
 # Specific version
-docker pull tldr/openvpn-mng:1.0.0
+docker pull tldr/openvpn-mng:1.1.0
 ```
 
 **Run container:**

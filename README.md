@@ -40,7 +40,7 @@ A web-based management system for OpenVPN users, groups, networks, and access co
 ### DEB (Debian, Ubuntu)
 
 ```bash
-VERSION="1.0.0"
+VERSION="1.1.0"
 wget https://github.com/tldr-it-stepankutaj/openvpn-mng/releases/download/v${VERSION}/openvpn-mng_${VERSION}_linux_amd64.deb
 sudo dpkg -i openvpn-mng_${VERSION}_linux_amd64.deb
 ```
@@ -48,7 +48,7 @@ sudo dpkg -i openvpn-mng_${VERSION}_linux_amd64.deb
 ### RPM (RHEL, AlmaLinux, Rocky Linux)
 
 ```bash
-VERSION="1.0.0"
+VERSION="1.1.0"
 wget https://github.com/tldr-it-stepankutaj/openvpn-mng/releases/download/v${VERSION}/openvpn-mng_${VERSION}_linux_amd64.rpm
 sudo dnf install ./openvpn-mng_${VERSION}_linux_amd64.rpm
 ```

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/apperror"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/database"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/dto"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/models"
@@ -11,7 +12,7 @@ import (
 )
 
 var (
-	ErrUserExists = errors.New("user already exists")
+	ErrUserExists = apperror.Conflict("User already exists")
 )
 
 // UserService provides user management services

@@ -24,8 +24,9 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// AuthMiddleware creates authentication middleware
-func AuthMiddleware(cfg *config.AuthConfig) gin.HandlerFunc {
+// AuthMiddleware creates authentication middleware.
+// If blacklist is non-nil, tokens on the blacklist are rejected.
+func AuthMiddleware(cfg *config.AuthConfig, blacklist *TokenBlacklist) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get token from Authorization header
 		authHeader := c.GetHeader("Authorization")
@@ -43,9 +44,18 @@ func AuthMiddleware(cfg *config.AuthConfig) gin.HandlerFunc {
 			}
 		} else {
 			// Remove "Bearer " prefix
-			if strings.HasPrefix(authHeader, "Bearer ") {
-				authHeader = strings.TrimPrefix(authHeader, "Bearer ")
-			}
+			authHeader = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+
+		// Check token blacklist
+		if blacklist != nil && blacklist.IsBlacklisted(authHeader) {
+			c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
+				Error:   "Unauthorized",
+				Message: "Token has been invalidated",
+				Code:    http.StatusUnauthorized,
+			})
+			c.Abort()
+			return
 		}
 
 		// Parse token

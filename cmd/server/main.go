@@ -34,6 +34,7 @@ import (
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/config"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/database"
 	applogger "github.com/tldr-it-stepankutaj/openvpn-mng/internal/logger"
+	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/middleware"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/models"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/routes"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/services"
@@ -91,13 +92,28 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	// Create token blacklist for session invalidation
+	blacklist := middleware.NewTokenBlacklist()
+	defer blacklist.Stop()
+
+	// Create rate limiter if enabled
+	var rateLimiter *middleware.RateLimiter
+	if cfg.Security.RateLimitEnabled {
+		rateLimiter = middleware.NewRateLimiter(&cfg.Security)
+		defer rateLimiter.Stop()
+		applogger.Info("Rate limiting enabled",
+			"requests", cfg.Security.RateLimitRequests,
+			"window_seconds", cfg.Security.RateLimitWindow,
+			"burst", cfg.Security.RateLimitBurst)
+	}
+
 	// Create a Gin router with our custom logger middleware
 	r := gin.New()
 	r.Use(applogger.GinLogger())
 	r.Use(applogger.GinRecovery())
 
 	// Setup routes
-	routes.SetupRoutes(r, cfg)
+	routes.SetupRoutes(r, cfg, rateLimiter, blacklist)
 	applogger.Info("Routes configured")
 
 	// API status

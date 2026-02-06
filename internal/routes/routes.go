@@ -11,7 +11,7 @@ import (
 )
 
 // SetupRoutes sets up all routes
-func SetupRoutes(r *gin.Engine, cfg *config.Config) {
+func SetupRoutes(r *gin.Engine, cfg *config.Config, rateLimiter *middleware.RateLimiter, blacklist *middleware.TokenBlacklist) {
 	// Static files
 	r.Static("/static", "./web/static")
 
@@ -19,7 +19,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 	r.LoadHTMLGlob("web/templates/*")
 
 	// Handlers
-	authHandler := handlers.NewAuthHandler(&cfg.Auth)
+	authHandler := handlers.NewAuthHandler(&cfg.Auth, blacklist, &cfg.Security)
 	userHandler := handlers.NewUserHandler(&cfg.VPN)
 	groupHandler := handlers.NewGroupHandler()
 	networkHandler := handlers.NewNetworkHandler()
@@ -39,7 +39,7 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 
 		// Protected web routes
 		protected := webRoutes.Group("/")
-		protected.Use(middleware.AuthMiddleware(&cfg.Auth))
+		protected.Use(middleware.AuthMiddleware(&cfg.Auth, blacklist))
 		{
 			protected.GET("/dashboard", webHandler.DashboardPage)
 			protected.GET("/users", webHandler.UsersPage)
@@ -60,12 +60,16 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 			// Auth routes (public)
 			auth := api.Group("/auth")
 			{
-				auth.POST("/login", authHandler.Login)
+				if rateLimiter != nil {
+					auth.POST("/login", rateLimiter.Middleware(), authHandler.Login)
+				} else {
+					auth.POST("/login", authHandler.Login)
+				}
 			}
 
 			// Protected API routes
 			protected := api.Group("/")
-			protected.Use(middleware.AuthMiddleware(&cfg.Auth))
+			protected.Use(middleware.AuthMiddleware(&cfg.Auth, blacklist))
 			{
 				// Auth
 				protected.POST("/auth/logout", authHandler.Logout)
@@ -177,7 +181,11 @@ func SetupRoutes(r *gin.Engine, cfg *config.Config) {
 			vpnAuth := api.Group("/vpn-auth")
 			vpnAuth.Use(middleware.VpnTokenAuth(cfg.API.VpnToken))
 			{
-				vpnAuth.POST("/authenticate", vpnAuthHandler.Authenticate)
+				if rateLimiter != nil {
+					vpnAuth.POST("/authenticate", rateLimiter.Middleware(), vpnAuthHandler.Authenticate)
+				} else {
+					vpnAuth.POST("/authenticate", vpnAuthHandler.Authenticate)
+				}
 				vpnAuth.GET("/users", vpnAuthHandler.ListAllUsers)
 				vpnAuth.GET("/users/:id", vpnAuthHandler.GetUserByID)
 				vpnAuth.GET("/users/:id/routes", vpnAuthHandler.GetUserRoutes)

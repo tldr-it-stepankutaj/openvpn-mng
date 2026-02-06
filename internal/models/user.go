@@ -9,27 +9,29 @@ import (
 
 // User represents a user in the system
 type User struct {
-	ID           uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
-	Username     string         `gorm:"uniqueIndex;size:100;not null" json:"username"`
-	Password     string         `gorm:"size:255;not null" json:"-"`
-	ManagerID    *uuid.UUID     `gorm:"type:uuid;index" json:"manager_id,omitempty"`
-	Manager      *User          `gorm:"foreignKey:ManagerID" json:"manager,omitempty"`
-	FirstName    string         `gorm:"size:100;not null" json:"first_name"`
-	MiddleName   string         `gorm:"size:100" json:"middle_name,omitempty"`
-	LastName     string         `gorm:"size:100;not null" json:"last_name"`
-	Email        string         `gorm:"uniqueIndex;size:255;not null" json:"email"`
-	Telephone    string         `gorm:"size:50" json:"telephone,omitempty"`
-	Role         Role           `gorm:"size:20;not null;default:'USER'" json:"role"`
-	IsActive     bool           `gorm:"not null;default:true" json:"is_active"`
-	ValidFrom    *time.Time     `gorm:"type:date" json:"valid_from,omitempty"`
-	ValidTo      *time.Time     `gorm:"type:date" json:"valid_to,omitempty"`
-	VpnIP        string         `gorm:"size:45" json:"vpn_ip,omitempty"`
-	CreatedAt    time.Time      `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt    *time.Time     `gorm:"autoUpdateTime" json:"updated_at,omitempty"`
-	CreatedBy    uuid.UUID      `gorm:"type:uuid;not null" json:"created_by"`
-	UpdatedBy    *uuid.UUID     `gorm:"type:uuid" json:"updated_by,omitempty"`
-	ManagedUsers []User         `gorm:"foreignKey:ManagerID" json:"managed_users,omitempty"`
-	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
+	ID                  uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
+	Username            string         `gorm:"uniqueIndex;size:100;not null" json:"username"`
+	Password            string         `gorm:"size:255;not null" json:"-"`
+	ManagerID           *uuid.UUID     `gorm:"type:uuid;index" json:"manager_id,omitempty"`
+	Manager             *User          `gorm:"foreignKey:ManagerID" json:"manager,omitempty"`
+	FirstName           string         `gorm:"size:100;not null" json:"first_name"`
+	MiddleName          string         `gorm:"size:100" json:"middle_name,omitempty"`
+	LastName            string         `gorm:"size:100;not null" json:"last_name"`
+	Email               string         `gorm:"uniqueIndex;size:255;not null" json:"email"`
+	Telephone           string         `gorm:"size:50" json:"telephone,omitempty"`
+	Role                Role           `gorm:"size:20;not null;default:'USER'" json:"role"`
+	IsActive            bool           `gorm:"not null;default:true" json:"is_active"`
+	ValidFrom           *time.Time     `gorm:"type:date" json:"valid_from,omitempty"`
+	ValidTo             *time.Time     `gorm:"type:date" json:"valid_to,omitempty"`
+	VpnIP               string         `gorm:"size:45" json:"vpn_ip,omitempty"`
+	FailedLoginAttempts int            `gorm:"not null;default:0" json:"-"`
+	LockedUntil         *time.Time     `json:"locked_until,omitempty"`
+	CreatedAt           time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt           *time.Time     `gorm:"autoUpdateTime" json:"updated_at,omitempty"`
+	CreatedBy           uuid.UUID      `gorm:"type:uuid;not null" json:"created_by"`
+	UpdatedBy           *uuid.UUID     `gorm:"type:uuid" json:"updated_by,omitempty"`
+	ManagedUsers        []User         `gorm:"foreignKey:ManagerID" json:"managed_users,omitempty"`
+	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 // BeforeCreate hook to generate UUID before creating a new user

@@ -30,7 +30,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		TokenExpiry:   24,
 		SessionExpiry: 24,
 	}
-	handler := handlers.NewAuthHandler(cfg)
+	handler := handlers.NewAuthHandler(cfg, nil)
 
 	t.Run("successful login", func(t *testing.T) {
 		user := testutil.CreateTestUserWithName(t, models.RoleUser, "logintest")
@@ -165,7 +165,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		TokenExpiry:   24,
 		SessionExpiry: 24,
 	}
-	handler := handlers.NewAuthHandler(cfg)
+	handler := handlers.NewAuthHandler(cfg, nil)
 
 	t.Run("successful logout with auth", func(t *testing.T) {
 		user := testutil.CreateTestUserWithName(t, models.RoleUser, "logouttest")
@@ -218,7 +218,7 @@ func TestAuthHandler_Me(t *testing.T) {
 		TokenExpiry:   24,
 		SessionExpiry: 24,
 	}
-	handler := handlers.NewAuthHandler(cfg)
+	handler := handlers.NewAuthHandler(cfg, nil)
 
 	t.Run("returns current user", func(t *testing.T) {
 		user := testutil.CreateTestUserWithName(t, models.RoleUser, "metest")

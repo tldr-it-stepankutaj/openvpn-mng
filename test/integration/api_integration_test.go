@@ -23,8 +23,8 @@ func setupIntegrationRouter(cfg *config.AuthConfig) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
 
-	authHandler := handlers.NewAuthHandler(cfg)
-	userHandler := handlers.NewUserHandler()
+	authHandler := handlers.NewAuthHandler(cfg, nil)
+	userHandler := handlers.NewUserHandler(&config.VPNConfig{})
 	groupHandler := handlers.NewGroupHandler()
 	networkHandler := handlers.NewNetworkHandler()
 
@@ -33,7 +33,7 @@ func setupIntegrationRouter(cfg *config.AuthConfig) *gin.Engine {
 
 	// Protected routes
 	protected := router.Group("/api/v1")
-	protected.Use(middleware.AuthMiddleware(cfg))
+	protected.Use(middleware.AuthMiddleware(cfg, nil))
 	{
 		protected.POST("/auth/logout", authHandler.Logout)
 		protected.GET("/auth/me", authHandler.Me)

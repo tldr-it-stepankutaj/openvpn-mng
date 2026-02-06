@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/apperror"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/config"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/dto"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/middleware"
@@ -102,19 +103,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 
 	user, err := h.userService.Create(&req, authUserID)
 	if err != nil {
-		if err == services.ErrUserExists {
-			c.JSON(http.StatusConflict, dto.ErrorResponse{
-				Error:   "Conflict",
-				Message: "User already exists",
-				Code:    http.StatusConflict,
-			})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Error:   "Internal Server Error",
-			Message: err.Error(),
-			Code:    http.StatusInternalServerError,
-		})
+		apperror.HandleError(c, err)
 		return
 	}
 

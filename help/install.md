@@ -467,6 +467,14 @@ logging:
   path: "/var/log/openvpn-mng"
   format: "json"
   level: "info"
+
+security:
+  rate_limit_enabled: true
+  rate_limit_requests: 5
+  rate_limit_window: 60
+  rate_limit_burst: 10
+  lockout_max_attempts: 5
+  lockout_duration: 15
 ```
 
 ---
@@ -710,3 +718,13 @@ Define network segments and assign them to groups:
 ![Network Management](images/admin_networks.png)
 
 For more information, see the [API Documentation](api.md) and [Client Integration Guide](client.md).
+
+---
+
+## OpenVPN Client Integration
+
+After installing OpenVPN Manager, you need to install **[openvpn-client](https://github.com/tldr-it-stepankutaj/openvpn-client)** on the OpenVPN server to connect the two systems. The client provides hook scripts that OpenVPN calls during user authentication, connection, and disconnection events.
+
+1. Install openvpn-client on the OpenVPN server — see the [openvpn-client installation guide](https://github.com/tldr-it-stepankutaj/openvpn-client#installation)
+2. Configure it to point to this OpenVPN Manager instance using the VPN Auth API token
+3. Set up the OpenVPN server hooks (`auth-user-pass-verify`, `client-connect`, `client-disconnect`) to call the openvpn-client binaries

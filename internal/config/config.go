@@ -17,6 +17,17 @@ type Config struct {
 	Auth     AuthConfig     `yaml:"auth"`
 	Logging  LoggingConfig  `yaml:"logging"`
 	VPN      VPNConfig      `yaml:"vpn"`
+	Security SecurityConfig `yaml:"security"`
+}
+
+// SecurityConfig represents security-related configuration
+type SecurityConfig struct {
+	RateLimitEnabled   bool `yaml:"rate_limit_enabled"`   // default: true
+	RateLimitRequests  int  `yaml:"rate_limit_requests"`  // max requests per window, default: 5
+	RateLimitWindow    int  `yaml:"rate_limit_window"`    // window in seconds, default: 60
+	RateLimitBurst     int  `yaml:"rate_limit_burst"`     // burst size, default: 10
+	LockoutMaxAttempts int  `yaml:"lockout_max_attempts"` // default: 5
+	LockoutDuration    int  `yaml:"lockout_duration"`     // minutes, default: 15
 }
 
 // VPNConfig represents VPN network configuration
@@ -110,6 +121,26 @@ func Load(path string) (*Config, error) {
 	}
 	if config.Logging.Level == "" {
 		config.Logging.Level = "info"
+	}
+
+	// Security defaults
+	if !config.Security.RateLimitEnabled && os.Getenv("SECURITY_RATE_LIMIT_ENABLED") == "" {
+		config.Security.RateLimitEnabled = true
+	}
+	if config.Security.RateLimitRequests == 0 {
+		config.Security.RateLimitRequests = 5
+	}
+	if config.Security.RateLimitWindow == 0 {
+		config.Security.RateLimitWindow = 60
+	}
+	if config.Security.RateLimitBurst == 0 {
+		config.Security.RateLimitBurst = 10
+	}
+	if config.Security.LockoutMaxAttempts == 0 {
+		config.Security.LockoutMaxAttempts = 5
+	}
+	if config.Security.LockoutDuration == 0 {
+		config.Security.LockoutDuration = 15
 	}
 
 	// Database defaults
@@ -210,6 +241,36 @@ func loadEnvOverrides(config *Config) {
 	}
 	if v := os.Getenv("LOG_LEVEL"); v != "" {
 		config.Logging.Level = v
+	}
+
+	// Security configuration
+	if v := os.Getenv("SECURITY_RATE_LIMIT_ENABLED"); v != "" {
+		config.Security.RateLimitEnabled = strings.ToLower(v) == "true" || v == "1"
+	}
+	if v := os.Getenv("SECURITY_RATE_LIMIT_REQUESTS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			config.Security.RateLimitRequests = n
+		}
+	}
+	if v := os.Getenv("SECURITY_RATE_LIMIT_WINDOW"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			config.Security.RateLimitWindow = n
+		}
+	}
+	if v := os.Getenv("SECURITY_RATE_LIMIT_BURST"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			config.Security.RateLimitBurst = n
+		}
+	}
+	if v := os.Getenv("SECURITY_LOCKOUT_MAX_ATTEMPTS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			config.Security.LockoutMaxAttempts = n
+		}
+	}
+	if v := os.Getenv("SECURITY_LOCKOUT_DURATION"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			config.Security.LockoutDuration = n
+		}
 	}
 
 	// VPN configuration

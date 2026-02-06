@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/config"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/dto"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/handlers"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/middleware"
@@ -22,7 +23,7 @@ import (
 func setupUserRouter(authUser *dto.AuthUser) (*gin.Engine, *handlers.UserHandler) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	handler := handlers.NewUserHandler()
+	handler := handlers.NewUserHandler(&config.VPNConfig{})
 
 	if authUser != nil {
 		router.Use(func(c *gin.Context) {

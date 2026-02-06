@@ -1,9 +1,14 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/apperror"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/config"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/dto"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/middleware"
@@ -15,14 +20,22 @@ type AuthHandler struct {
 	authService *services.AuthService
 	auditLogger *middleware.AuditLogger
 	config      *config.AuthConfig
+	blacklist   *middleware.TokenBlacklist
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(cfg *config.AuthConfig) *AuthHandler {
+func NewAuthHandler(cfg *config.AuthConfig, blacklist *middleware.TokenBlacklist, securityCfg ...*config.SecurityConfig) *AuthHandler {
+	var authService *services.AuthService
+	if len(securityCfg) > 0 && securityCfg[0] != nil {
+		authService = services.NewAuthServiceWithSecurity(cfg, securityCfg[0])
+	} else {
+		authService = services.NewAuthService(cfg)
+	}
 	return &AuthHandler{
-		authService: services.NewAuthService(cfg),
+		authService: authService,
 		auditLogger: middleware.NewAuditLogger(),
 		config:      cfg,
+		blacklist:   blacklist,
 	}
 }
 
@@ -50,22 +63,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	token, user, err := h.authService.Authenticate(req.Username, req.Password)
 	if err != nil {
-		// Provide specific error messages for different authentication failures
-		message := "Invalid username or password"
-		switch err {
-		case services.ErrUserInactive:
-			message = "User account is inactive"
-		case services.ErrUserNotYetValid:
-			message = "User account is not yet valid"
-		case services.ErrUserExpired:
-			message = "User account has expired"
+		var appErr *apperror.AppError
+		if errors.As(err, &appErr) && appErr.Code == http.StatusTooManyRequests {
+			c.Header("Retry-After", strconv.Itoa(h.config.SessionExpiry*60))
 		}
-
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Error:   "Unauthorized",
-			Message: message,
-			Code:    http.StatusUnauthorized,
-		})
+		apperror.HandleError(c, err)
 		return
 	}
 
@@ -75,7 +77,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Set cookie for web frontend
+	// Set cookie for web frontend with SameSite=Lax for CSRF protection
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("token", token, h.config.SessionExpiry*3600, "/", "", false, true)
 
 	c.JSON(http.StatusOK, dto.LoginResponse{
@@ -103,7 +106,27 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		}
 	}
 
+	// Blacklist the token so it cannot be reused
+	if h.blacklist != nil {
+		rawToken := ""
+		if authHeader := c.GetHeader("Authorization"); authHeader != "" {
+			rawToken = strings.TrimPrefix(authHeader, "Bearer ")
+		} else {
+			rawToken, _ = c.Cookie("token")
+		}
+		if rawToken != "" {
+			// Parse expiry from token to know when to remove from blacklist
+			parser := jwt.NewParser()
+			claims := &middleware.Claims{}
+			_, _, _ = parser.ParseUnverified(rawToken, claims)
+			if claims.ExpiresAt != nil {
+				h.blacklist.Add(rawToken, claims.ExpiresAt.Time)
+			}
+		}
+	}
+
 	// Clear cookie
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("token", "", -1, "/", "", false, true)
 
 	c.JSON(http.StatusOK, dto.SuccessResponse{

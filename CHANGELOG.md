@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-02-06
+
+### Added
+- **Rate limiting** — Per-IP token bucket middleware on login and VPN auth endpoints using `golang.org/x/time/rate`
+- **Account lockout** — Temporary account lock after configurable number of failed login attempts
+- **Token blacklist** — Immediate JWT invalidation on logout with SHA-256 hashed in-memory store and TTL cleanup
+- **Structured error types** — New `internal/apperror` package with typed errors (`AppError`) and Gin helper `HandleError()`
+- **Security configuration section** in `config.yaml`:
+  - `rate_limit_enabled`, `rate_limit_requests`, `rate_limit_window`, `rate_limit_burst`
+  - `lockout_max_attempts`, `lockout_duration`
+- Environment variables: `SECURITY_RATE_LIMIT_ENABLED`, `SECURITY_RATE_LIMIT_REQUESTS`, `SECURITY_RATE_LIMIT_WINDOW`, `SECURITY_RATE_LIMIT_BURST`, `SECURITY_LOCKOUT_MAX_ATTEMPTS`, `SECURITY_LOCKOUT_DURATION`
+- `FailedLoginAttempts` and `LockedUntil` fields on User model (auto-migrated)
+- Sample VPN session history data (`sample_sessions_7days.sql`)
+
+### Changed
+- Auth cookies now set `SameSite=Lax` for CSRF protection
+- `AuthMiddleware` accepts optional `TokenBlacklist` parameter for token invalidation checks
+- `AuthHandler` accepts optional `SecurityConfig` for lockout-aware error responses (429 + `Retry-After` header)
+- Service-layer errors refactored from sentinel `errors.New()` to typed `apperror.*()` constructors
+- Handler error responses use `apperror.HandleError()` for consistent JSON error format
+
+### Security
+- Login and VPN auth endpoints are rate-limited per client IP (configurable)
+- Accounts are temporarily locked after repeated failed login attempts
+- Logged-out JWT tokens are immediately blacklisted until natural expiry
+- Auth cookies use `SameSite=Lax` to prevent cross-site request forgery
+
 ## [1.0.1] - 2025-12-02
 
 ### Added
@@ -55,5 +82,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Systemd service runs with restricted privileges
 - Configuration file protected with proper permissions
 
+[1.1.0]: https://github.com/tldr-it-stepankutaj/openvpn-mng/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/tldr-it-stepankutaj/openvpn-mng/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/tldr-it-stepankutaj/openvpn-mng/releases/tag/v1.0.0

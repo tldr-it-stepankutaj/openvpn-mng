@@ -1,11 +1,12 @@
 package services
 
 import (
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/apperror"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/config"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/database"
 	"github.com/tldr-it-stepankutaj/openvpn-mng/internal/middleware"
@@ -14,22 +15,31 @@ import (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid username or password")
-	ErrUserNotFound       = errors.New("user not found")
-	ErrUserInactive       = errors.New("user account is inactive")
-	ErrUserNotYetValid    = errors.New("user account is not yet valid")
-	ErrUserExpired        = errors.New("user account has expired")
+	ErrInvalidCredentials = apperror.Unauthorized("Invalid username or password")
+	ErrUserNotFound       = apperror.NotFound("User not found")
+	ErrUserInactive       = apperror.Unauthorized("User account is inactive")
+	ErrUserNotYetValid    = apperror.Unauthorized("User account is not yet valid")
+	ErrUserExpired        = apperror.Unauthorized("User account has expired")
 )
 
 // AuthService provides authentication services
 type AuthService struct {
-	config *config.AuthConfig
+	config   *config.AuthConfig
+	security *config.SecurityConfig
 }
 
 // NewAuthService creates a new auth service
 func NewAuthService(cfg *config.AuthConfig) *AuthService {
 	return &AuthService{
 		config: cfg,
+	}
+}
+
+// NewAuthServiceWithSecurity creates a new auth service with security config for lockout
+func NewAuthServiceWithSecurity(cfg *config.AuthConfig, sec *config.SecurityConfig) *AuthService {
+	return &AuthService{
+		config:   cfg,
+		security: sec,
 	}
 }
 
@@ -40,7 +50,15 @@ func (s *AuthService) Authenticate(username, password string) (string, *models.U
 		return "", nil, ErrInvalidCredentials
 	}
 
+	// Check account lockout
+	if s.security != nil && user.LockedUntil != nil && user.LockedUntil.After(time.Now()) {
+		remaining := int(time.Until(*user.LockedUntil).Seconds())
+		return "", nil, apperror.TooManyRequests(
+			fmt.Sprintf("Account temporarily locked. Try again in %d seconds", remaining))
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		s.recordFailedLogin(&user)
 		return "", nil, ErrInvalidCredentials
 	}
 
@@ -49,6 +67,9 @@ func (s *AuthService) Authenticate(username, password string) (string, *models.U
 		return "", nil, err
 	}
 
+	// Reset failed attempts on successful login
+	s.resetFailedLogin(&user)
+
 	// Generate JWT token
 	token, err := s.generateToken(&user)
 	if err != nil {
@@ -56,6 +77,36 @@ func (s *AuthService) Authenticate(username, password string) (string, *models.U
 	}
 
 	return token, &user, nil
+}
+
+// recordFailedLogin increments failed login attempts and locks account if threshold exceeded
+func (s *AuthService) recordFailedLogin(user *models.User) {
+	if s.security == nil {
+		return
+	}
+	user.FailedLoginAttempts++
+	updates := map[string]interface{}{
+		"failed_login_attempts": user.FailedLoginAttempts,
+	}
+	if user.FailedLoginAttempts >= s.security.LockoutMaxAttempts {
+		lockUntil := time.Now().Add(time.Duration(s.security.LockoutDuration) * time.Minute)
+		updates["locked_until"] = lockUntil
+	}
+	database.GetDB().Model(user).Updates(updates)
+}
+
+// resetFailedLogin clears failed login attempts and lockout
+func (s *AuthService) resetFailedLogin(user *models.User) {
+	if s.security == nil {
+		return
+	}
+	if user.FailedLoginAttempts == 0 && user.LockedUntil == nil {
+		return
+	}
+	database.GetDB().Model(user).Updates(map[string]interface{}{
+		"failed_login_attempts": 0,
+		"locked_until":          nil,
+	})
 }
 
 // validateUserAccess checks if user is active and within validity period

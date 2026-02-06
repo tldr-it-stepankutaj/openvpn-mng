@@ -46,7 +46,7 @@ func TestAuthMiddleware(t *testing.T) {
 		token := createTestToken(userID, "testuser", models.RoleUser, cfg.JWTSecret, time.Hour)
 
 		router := gin.New()
-		router.Use(middleware.AuthMiddleware(cfg))
+		router.Use(middleware.AuthMiddleware(cfg, nil))
 		router.GET("/test", func(c *gin.Context) {
 			authUser := middleware.GetAuthUser(c)
 			c.JSON(http.StatusOK, gin.H{
@@ -70,7 +70,7 @@ func TestAuthMiddleware(t *testing.T) {
 		token := createTestToken(userID, "testuser", models.RoleUser, cfg.JWTSecret, time.Hour)
 
 		router := gin.New()
-		router.Use(middleware.AuthMiddleware(cfg))
+		router.Use(middleware.AuthMiddleware(cfg, nil))
 		router.GET("/test", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		})
@@ -86,7 +86,7 @@ func TestAuthMiddleware(t *testing.T) {
 
 	t.Run("missing token", func(t *testing.T) {
 		router := gin.New()
-		router.Use(middleware.AuthMiddleware(cfg))
+		router.Use(middleware.AuthMiddleware(cfg, nil))
 		router.GET("/test", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		})
@@ -101,7 +101,7 @@ func TestAuthMiddleware(t *testing.T) {
 
 	t.Run("invalid token", func(t *testing.T) {
 		router := gin.New()
-		router.Use(middleware.AuthMiddleware(cfg))
+		router.Use(middleware.AuthMiddleware(cfg, nil))
 		router.GET("/test", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		})
@@ -120,7 +120,7 @@ func TestAuthMiddleware(t *testing.T) {
 		token := createTestToken(userID, "testuser", models.RoleUser, cfg.JWTSecret, -time.Hour)
 
 		router := gin.New()
-		router.Use(middleware.AuthMiddleware(cfg))
+		router.Use(middleware.AuthMiddleware(cfg, nil))
 		router.GET("/test", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		})
@@ -139,7 +139,7 @@ func TestAuthMiddleware(t *testing.T) {
 		token := createTestToken(userID, "testuser", models.RoleUser, "wrong-secret", time.Hour)
 
 		router := gin.New()
-		router.Use(middleware.AuthMiddleware(cfg))
+		router.Use(middleware.AuthMiddleware(cfg, nil))
 		router.GET("/test", func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		})
